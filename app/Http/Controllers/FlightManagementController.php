@@ -17,22 +17,30 @@ use Inertia\Response;
 /**
  * FlightManagementController
  * 
- * FIS Responsibility: Process and manage flight data received from external systems
+ * FIS Responsibility: Create and manage flight operations globally
  * 
  * This controller handles CRUD operations for flights within the FIS system.
- * It does NOT create original flight schedules - those come from airlines/PMS.
+ * FIS is the central system that creates, manages, and distributes flight information.
  * 
- * FIS Role: Receive → Process → Store → Distribute
+ * FIS Role: Create → Manage → Distribute
  * 
- * Data Sources:
- * - Flight schedules: Received from PMS/Airlines (via API or manual entry)
- * - Status updates: Received from ATC (clearance, weather, delays)
- * - Gate assignments: Received from PMS (gate operations)
+ * Flight Management:
+ * - Flight creation and scheduling (FIS creates flights)
+ * - Status updates from ATC (clearance, weather, delays)
+ * - Gate and terminal assignments
+ * - Baggage claim area assignments
  * 
  * Data Distribution:
- * - Updates sent to PMS for boarding operations
+ * - Flight schedules sent to ARS for booking operations
+ * - Updates sent to PMS for passenger handling
  * - Updates sent to BHS for baggage routing
- * - Updates displayed to passengers via boards/apps
+ * - Updates displayed to passengers via FIDS/apps
+ * 
+ * Integration Points:
+ * - ARS: Receives flight schedules for booking availability
+ * - PMS: Receives flight updates for check-in/boarding
+ * - BHS: Receives gate/baggage assignments for routing
+ * - ATC: Provides NOTAMs and clearances affecting flights
  */
 class FlightManagementController extends Controller
 {
@@ -107,23 +115,33 @@ class FlightManagementController extends Controller
 
     /**
      * Store a newly created flight in the database.
+     * 
+     * FIS creates and manages flights globally.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'flight_number' => 'required|string|max:10',
             'airline_code' => 'required|string|exists:airlines,airline_code',
+            'aircraft_icao_code' => 'nullable|string|exists:aircraft,icao_code',
             'origin_code' => 'required|string|exists:airports,iata_code',
             'destination_code' => 'required|string|exists:airports,iata_code|different:origin_code',
-            'aircraft_icao_code' => 'nullable|string|exists:aircrafts,icao_code',
+            'scheduled_departure_time' => 'required|date',
+            'scheduled_arrival_time' => 'required|date|after:scheduled_departure_time',
+            'status_id' => 'required|exists:flight_statuses,id',
             'gate_id' => 'nullable|exists:gates,id',
             'baggage_claim_id' => 'nullable|exists:baggage_claims,id',
-            'status_id' => 'required|exists:flight_status,id',
-            'scheduled_departure_time' => 'required|date',
-            'scheduled_arrival_time' => 'nullable|date|after:scheduled_departure_time',
         ]);
 
+        // Create the flight
         $flight = Flight::create($validated);
+
+        // Create initial event log
+        $flight->events()->create([
+            'event_type' => 'created',
+            'description' => 'Flight created in FIS',
+            'timestamp' => now(),
+        ]);
 
         return redirect()->back()->with('success', 'Flight created successfully.');
     }

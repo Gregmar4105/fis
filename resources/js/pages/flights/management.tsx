@@ -130,9 +130,24 @@ interface Props {
 
 export default function FlightManagement({ flights, filters, options }: Props) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    
+    // Form state for create dialog
+    const [formData, setFormData] = useState({
+        flight_number: '',
+        airline_code: '',
+        aircraft_icao_code: '',
+        origin_code: '',
+        destination_code: '',
+        scheduled_departure_time: '',
+        scheduled_arrival_time: '',
+        status_id: '1',
+        gate_id: '',
+        baggage_claim_id: '',
+    });
     
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -200,9 +215,13 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                             Flight Management
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            View, update, and manage flight records received from PMS
+                            Create, view, update, and manage flight operations globally
                         </p>
                     </div>
+                    <Button onClick={() => setShowCreateDialog(true)} size="lg">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add New Flight
+                    </Button>
                 </div>
 
                 <Separator />
@@ -503,7 +522,244 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Create Flight Dialog */}
+                <Dialog open={showCreateDialog} onOpenChange={(open) => {
+                    setShowCreateDialog(open);
+                    if (!open) {
+                        // Reset form when closing
+                        setFormData({
+                            flight_number: '',
+                            airline_code: '',
+                            aircraft_icao_code: '',
+                            origin_code: '',
+                            destination_code: '',
+                            scheduled_departure_time: '',
+                            scheduled_arrival_time: '',
+                            status_id: '1',
+                            gate_id: '',
+                            baggage_claim_id: '',
+                        });
+                    }
+                }}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Create New Flight</DialogTitle>
+                            <DialogDescription>
+                                Add a new flight to the FIS system. All fields marked with * are required.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const submitData: any = { ...formData };
+                            // Remove empty optional fields
+                            if (!submitData.aircraft_icao_code) delete submitData.aircraft_icao_code;
+                            if (!submitData.gate_id) delete submitData.gate_id;
+                            if (!submitData.baggage_claim_id) delete submitData.baggage_claim_id;
+                            
+                            router.post('/flights/management', submitData, {
+                                onSuccess: () => setShowCreateDialog(false),
+                            });
+                        }}>
+                            <div className="grid gap-4 py-4">
+                                {/* Flight Number */}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="flight_number">Flight Number *</Label>
+                                    <Input
+                                        id="flight_number"
+                                        value={formData.flight_number}
+                                        onChange={(e) => setFormData({ ...formData, flight_number: e.target.value })}
+                                        placeholder="e.g., PR104"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Airline */}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="airline_code">Airline *</Label>
+                                    <Select 
+                                        value={formData.airline_code} 
+                                        onValueChange={(value) => setFormData({ ...formData, airline_code: value })}
+                                        required
+                                    >
+                                        <SelectTrigger id="airline_code">
+                                            <SelectValue placeholder="Select airline" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {options.airlines.map((airline) => (
+                                                <SelectItem key={airline.airline_code} value={airline.airline_code}>
+                                                    {airline.airline_code} - {airline.airline_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Aircraft */}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="aircraft_icao_code">Aircraft (Optional)</Label>
+                                    <Select 
+                                        value={formData.aircraft_icao_code || 'none'} 
+                                        onValueChange={(value) => setFormData({ ...formData, aircraft_icao_code: value === 'none' ? '' : value })}
+                                    >
+                                        <SelectTrigger id="aircraft_icao_code">
+                                            <SelectValue placeholder="Select aircraft (optional)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Aircraft</SelectItem>
+                                            {options.aircraft.map((aircraft) => (
+                                                <SelectItem key={aircraft.icao_code} value={aircraft.icao_code}>
+                                                    {aircraft.icao_code} - {aircraft.manufacturer} {aircraft.model_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Route */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="origin_code">Origin Airport *</Label>
+                                        <Select 
+                                            value={formData.origin_code} 
+                                            onValueChange={(value) => setFormData({ ...formData, origin_code: value })}
+                                            required
+                                        >
+                                            <SelectTrigger id="origin_code">
+                                                <SelectValue placeholder="Select origin" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {options.airports.map((airport) => (
+                                                    <SelectItem key={airport.iata_code} value={airport.iata_code}>
+                                                        {airport.iata_code} - {airport.city}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="destination_code">Destination Airport *</Label>
+                                        <Select 
+                                            value={formData.destination_code} 
+                                            onValueChange={(value) => setFormData({ ...formData, destination_code: value })}
+                                            required
+                                        >
+                                            <SelectTrigger id="destination_code">
+                                                <SelectValue placeholder="Select destination" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {options.airports.map((airport) => (
+                                                    <SelectItem key={airport.iata_code} value={airport.iata_code}>
+                                                        {airport.iata_code} - {airport.city}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {/* Schedule Times */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="scheduled_departure_time">Scheduled Departure *</Label>
+                                        <Input
+                                            id="scheduled_departure_time"
+                                            value={formData.scheduled_departure_time}
+                                            onChange={(e) => setFormData({ ...formData, scheduled_departure_time: e.target.value })}
+                                            type="datetime-local"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="scheduled_arrival_time">Scheduled Arrival *</Label>
+                                        <Input
+                                            id="scheduled_arrival_time"
+                                            value={formData.scheduled_arrival_time}
+                                            onChange={(e) => setFormData({ ...formData, scheduled_arrival_time: e.target.value })}
+                                            type="datetime-local"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Status */}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="status_id">Initial Status *</Label>
+                                    <Select 
+                                        value={formData.status_id} 
+                                        onValueChange={(value) => setFormData({ ...formData, status_id: value })}
+                                    >
+                                        <SelectTrigger id="status_id">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {options.statuses.map((status) => (
+                                                <SelectItem key={status.id} value={status.id.toString()}>
+                                                    {status.status_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Optional: Gate */}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="gate_id">Gate (Optional)</Label>
+                                    <Select 
+                                        value={formData.gate_id || 'none'} 
+                                        onValueChange={(value) => setFormData({ ...formData, gate_id: value === 'none' ? '' : value })}
+                                    >
+                                        <SelectTrigger id="gate_id">
+                                            <SelectValue placeholder="Assign gate later" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Gate</SelectItem>
+                                            {options.gates.map((gate) => (
+                                                <SelectItem key={gate.id} value={gate.id.toString()}>
+                                                    {gate.terminal.terminal_code}-{gate.gate_code}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Optional: Baggage Claim */}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="baggage_claim_id">Baggage Claim (Optional)</Label>
+                                    <Select 
+                                        value={formData.baggage_claim_id || 'none'} 
+                                        onValueChange={(value) => setFormData({ ...formData, baggage_claim_id: value === 'none' ? '' : value })}
+                                    >
+                                        <SelectTrigger id="baggage_claim_id">
+                                            <SelectValue placeholder="Assign later" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Baggage Claim</SelectItem>
+                                            {options.baggageClaims.map((claim) => (
+                                                <SelectItem key={claim.id} value={claim.id.toString()}>
+                                                    {claim.claim_area} ({claim.terminal.terminal_code})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit">
+                                    Create Flight
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );
 }
+
