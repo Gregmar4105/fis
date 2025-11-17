@@ -1,6 +1,6 @@
 import terminals from './terminals'
 import gates from './gates'
-import baggageClaims from './baggage-claims'
+import baggageBelts from './baggage-belts'
 const management = {
     terminals: Object.assign(terminals, terminals),
 gates: Object.assign(gates, gates),

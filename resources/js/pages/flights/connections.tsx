@@ -47,8 +47,8 @@ interface Gate {
     terminal?: Terminal;
 }
 
-interface BaggageClaim {
-    claim_number: string;
+interface BaggageBelt {
+    belt_code: string;
 }
 
 interface FlightConnection {
@@ -80,10 +80,10 @@ interface Flight {
         gate?: Gate;
     };
     arrival?: {
-        baggage_claim?: BaggageClaim;
+        baggage_belt?: BaggageBelt;
     };
     gate?: Gate;
-    baggageClaim?: BaggageClaim;
+    baggageBelt?: BaggageBelt;
     
     // Connection info
     inbound_connections?: FlightConnection[];

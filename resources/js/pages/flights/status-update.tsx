@@ -24,9 +24,10 @@ interface Gate {
     display: string;
 }
 
-interface BaggageClaim {
+interface BaggageBelt {
     id: number;
-    area: string;
+    code: string;
+    status: string;
     terminal: string;
 }
 
@@ -42,9 +43,10 @@ interface FlightData {
         code: string | null;
         terminal: string | null;
     };
-    baggage_claim: {
+    baggage_belt: {
         id: number | null;
-        area: string | null;
+        code: string | null;
+        status: string | null;
     };
 }
 
@@ -53,7 +55,7 @@ interface Props {
     options: {
         statuses: FlightStatus[];
         gates: Gate[];
-        baggageClaims: BaggageClaim[];
+        baggageBelts: BaggageBelt[];
     };
 }
 
@@ -66,8 +68,8 @@ export default function StatusUpdate({ flights, options }: Props) {
     const [flightGates, setFlightGates] = useState<Record<number, number | null>>(
         flights.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.gate.id }), {})
     );
-    const [flightBaggageClaims, setFlightBaggageClaims] = useState<Record<number, number | null>>(
-        flights.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.baggage_claim.id }), {})
+    const [flightBaggageBelts, setFlightBaggageBelts] = useState<Record<number, number | null>>(
+        flights.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.baggage_belt.id }), {})
     );
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -109,9 +111,9 @@ export default function StatusUpdate({ flights, options }: Props) {
         });
     };
 
-    const handleBaggageClaimUpdate = (flightId: number, claimId: string) => {
+    const handleBaggageBeltUpdate = (flightId: number, beltId: string) => {
         router.post(`/flights/status-update/${flightId}/baggage-claim`, {
-            baggage_claim_id: claimId === 'none' ? null : parseInt(claimId),
+            baggage_belt_id: beltId === 'none' ? null : parseInt(beltId),
         }, {
             preserveScroll: true,
         });
@@ -189,7 +191,7 @@ export default function StatusUpdate({ flights, options }: Props) {
                                     <TableHead>Departure</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Gate</TableHead>
-                                    <TableHead>Baggage Claim</TableHead>
+                                    <TableHead>Baggage Belt</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -263,20 +265,20 @@ export default function StatusUpdate({ flights, options }: Props) {
                                             </TableCell>
                                             <TableCell>
                                                 <Select
-                                                    value={flightBaggageClaims[flight.id]?.toString() || 'none'}
+                                                    value={flightBaggageBelts[flight.id]?.toString() || 'none'}
                                                     onValueChange={(value) => {
-                                                        setFlightBaggageClaims(prev => ({ ...prev, [flight.id]: value === 'none' ? null : parseInt(value) }));
-                                                        handleBaggageClaimUpdate(flight.id, value);
+                                                        setFlightBaggageBelts(prev => ({ ...prev, [flight.id]: value === 'none' ? null : parseInt(value) }));
+                                                        handleBaggageBeltUpdate(flight.id, value);
                                                     }}
                                                 >
                                                     <SelectTrigger className="w-[120px]">
-                                                        <SelectValue placeholder="Select claim" />
+                                                        <SelectValue placeholder="Select belt" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="none">No Claim</SelectItem>
-                                                        {options.baggageClaims.map((claim) => (
-                                                            <SelectItem key={claim.id} value={claim.id.toString()}>
-                                                                {claim.area}
+                                                        <SelectItem value="none">No Belt</SelectItem>
+                                                        {options.baggageBelts.map((belt) => (
+                                                            <SelectItem key={belt.id} value={belt.id.toString()}>
+                                                                {belt.code} ({belt.status})
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>

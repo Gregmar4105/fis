@@ -12,7 +12,7 @@ use App\Http\Controllers\FlightManagementController;
 use App\Http\Controllers\FlightStatusUpdateController;
 use App\Http\Controllers\TerminalManagementController;
 use App\Http\Controllers\GateManagementController;
-use App\Http\Controllers\BaggageClaimManagementController;
+use App\Http\Controllers\BaggageBeltManagementController;
 use App\Http\Controllers\DocumentationController;
 
 Route::get('/', function () {
@@ -79,12 +79,12 @@ Route::middleware(['auth', 'verified', 'prevent-back'])->group(function () {
             Route::post('/{gate}/airlines', [GateManagementController::class, 'assignAirlines'])->name('assign-airlines');
         });
 
-        // Baggage Claims
-        Route::prefix('baggage-claims')->name('baggage-claims.')->group(function () {
-            Route::get('/', [BaggageClaimManagementController::class, 'index'])->name('index');
-            Route::post('/', [BaggageClaimManagementController::class, 'store'])->name('store');
-            Route::put('/{baggageClaim}', [BaggageClaimManagementController::class, 'update'])->name('update');
-            Route::delete('/{baggageClaim}', [BaggageClaimManagementController::class, 'destroy'])->name('destroy');
+        // Baggage Belts
+        Route::prefix('baggage-belts')->name('baggage-belts.')->group(function () {
+            Route::get('/', [BaggageBeltManagementController::class, 'index'])->name('index');
+            Route::post('/', [BaggageBeltManagementController::class, 'store'])->name('store');
+            Route::put('/{baggageBelt}', [BaggageBeltManagementController::class, 'update'])->name('update');
+            Route::delete('/{baggageBelt}', [BaggageBeltManagementController::class, 'destroy'])->name('destroy');
         });
     });
 

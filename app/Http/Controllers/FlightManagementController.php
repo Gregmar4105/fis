@@ -8,9 +8,10 @@ use App\Models\Airline;
 use App\Models\Airport;
 use App\Models\Aircraft;
 use App\Models\Gate;
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -58,7 +59,7 @@ class FlightManagementController extends Controller
             'origin',
             'destination',
             'gate.terminal',
-            'baggageClaim',
+            'baggageBelt',
             'aircraft'
         ]);
 
@@ -75,7 +76,7 @@ class FlightManagementController extends Controller
 
         // Filter by status
         if ($request->has('status') && $request->status) {
-            $query->where('status_id', $request->status);
+            $query->where('fk_id_status_code', $request->status);
         }
 
         // Filter by date range
@@ -94,10 +95,10 @@ class FlightManagementController extends Controller
         // Get dropdown options for create/edit forms
         $statuses = FlightStatus::all(['id', 'status_code', 'status_name']);
         $airlines = Airline::all(['airline_code', 'airline_name']);
-        $airports = Airport::all(['iata_code', 'airport_name', 'city']);
+        $airports = Airport::all(['iata_code', 'airport_name', 'city', 'timezone']);
         $aircraft = Aircraft::all(['icao_code', 'manufacturer', 'model_name']);
-        $gates = Gate::with('terminal')->get();
-        $baggageClaims = BaggageClaim::with('terminal')->get();
+        $gates = Gate::with(['terminal', 'terminal.airport'])->get();
+        $baggageBelts = BaggageBelt::with(['terminal', 'terminal.airport'])->get();
 
         return Inertia::render('flights/management', [
             'flights' => $flights,
@@ -108,7 +109,7 @@ class FlightManagementController extends Controller
                 'airports' => $airports,
                 'aircraft' => $aircraft,
                 'gates' => $gates,
-                'baggageClaims' => $baggageClaims,
+                'baggageBelts' => $baggageBelts,
             ],
         ]);
     }
@@ -120,17 +121,35 @@ class FlightManagementController extends Controller
      */
     public function store(Request $request)
     {
+        // If client provided timezone info for origin/destination, convert local times to UTC
+        if ($request->has('departure_tz') && $request->scheduled_departure_time) {
+            try {
+                $dt = Carbon::parse($request->scheduled_departure_time, $request->departure_tz)->setTimezone('UTC');
+                $request->merge(['scheduled_departure_time' => $dt->toDateTimeString()]);
+            } catch (\Exception $e) {
+                // leave original value; validator will catch invalid format
+            }
+        }
+        if ($request->has('arrival_tz') && $request->scheduled_arrival_time) {
+            try {
+                $dt = Carbon::parse($request->scheduled_arrival_time, $request->arrival_tz)->setTimezone('UTC');
+                $request->merge(['scheduled_arrival_time' => $dt->toDateTimeString()]);
+            } catch (\Exception $e) {
+                // leave original value
+            }
+        }
+
         $validated = $request->validate([
             'flight_number' => 'required|string|max:10',
             'airline_code' => 'required|string|exists:airlines,airline_code',
-            'aircraft_icao_code' => 'nullable|string|exists:aircraft,icao_code',
+            'aircraft_icao_code' => 'nullable|string|exists:aircrafts,icao_code',
             'origin_code' => 'required|string|exists:airports,iata_code',
             'destination_code' => 'required|string|exists:airports,iata_code|different:origin_code',
             'scheduled_departure_time' => 'required|date',
             'scheduled_arrival_time' => 'required|date|after:scheduled_departure_time',
-            'status_id' => 'required|exists:flight_statuses,id',
-            'gate_id' => 'nullable|exists:gates,id',
-            'baggage_claim_id' => 'nullable|exists:baggage_claims,id',
+            'fk_id_status_code' => 'required|exists:flight_status,id_status_code',
+            'fk_id_gate_code' => 'nullable|exists:gates,id_gate_code',
+            'fk_id_belt_code' => 'nullable|exists:baggage_belts,id_belt_code',
         ]);
 
         // Create the flight
@@ -142,6 +161,24 @@ class FlightManagementController extends Controller
             'description' => 'Flight created in FIS',
             'timestamp' => now(),
         ]);
+
+        // Record computed flight hours as an event (use UTC times from validated payload)
+        try {
+            if (!empty($validated['scheduled_departure_time']) && !empty($validated['scheduled_arrival_time'])) {
+                $dep = Carbon::parse($validated['scheduled_departure_time'])->setTimezone('UTC');
+                $arr = Carbon::parse($validated['scheduled_arrival_time'])->setTimezone('UTC');
+                $minutes = $dep->diffInMinutes($arr);
+                $hours = round($minutes / 60, 2);
+                $flight->events()->create([
+                    'event_type' => 'flight_hours',
+                    'description' => 'Scheduled flight duration (hours)',
+                    'new_value' => (string)$hours,
+                    'timestamp' => now(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // non-blocking: log if needed, but do not fail creation
+        }
 
         return redirect()->back()->with('success', 'Flight created successfully.');
     }
@@ -157,9 +194,9 @@ class FlightManagementController extends Controller
             'origin_code' => 'sometimes|string|exists:airports,iata_code',
             'destination_code' => 'sometimes|string|exists:airports,iata_code|different:origin_code',
             'aircraft_icao_code' => 'nullable|string|exists:aircrafts,icao_code',
-            'gate_id' => 'nullable|exists:gates,id',
-            'baggage_claim_id' => 'nullable|exists:baggage_claims,id',
-            'status_id' => 'sometimes|exists:flight_status,id',
+            'fk_id_gate_code' => 'nullable|exists:gates,id_gate_code',
+            'fk_id_belt_code' => 'nullable|exists:baggage_belts,id_belt_code',
+            'fk_id_status_code' => 'sometimes|exists:flight_status,id_status_code',
             'scheduled_departure_time' => 'sometimes|date',
             'scheduled_arrival_time' => 'nullable|date|after:scheduled_departure_time',
         ]);
@@ -201,7 +238,7 @@ class FlightManagementController extends Controller
             'origin',
             'destination',
             'gate.terminal',
-            'baggageClaim',
+            'baggageBelt',
             'aircraft',
             'arrival',
             'departure',

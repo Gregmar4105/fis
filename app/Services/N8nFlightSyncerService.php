@@ -8,7 +8,7 @@ use App\Models\FlightStatus;
 use App\Models\FlightDeparture;
 use App\Models\FlightArrival;
 use App\Models\Gate;
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,9 +27,9 @@ class N8nFlightSyncerService implements FlightSyncer
     private const UNASSIGNED_GATE_ID = 51;
 
     /**
-     * The fixed database ID for the 'UNASSIGNED' Baggage Claim placeholder (ID 6).
+     * The fixed database ID for the 'UNASSIGNED' Baggage Belt placeholder (ID 6).
      */
-    private const UNASSIGNED_CLAIM_ID = 6;
+    private const UNASSIGNED_BELT_ID = 6;
 
     public function syncFlight(array $payload): Flight
     {
@@ -77,9 +77,9 @@ class N8nFlightSyncerService implements FlightSyncer
                 if (!$defaultStatus) {
                     throw new RuntimeException('Default flight status (SCH) not found in the database.');
                 }
-                $flight->status_id = $defaultStatus->id;
-                $flight->gate_id = self::UNASSIGNED_GATE_ID;       // Set default for NEW record
-                $flight->baggage_claim_id = self::UNASSIGNED_CLAIM_ID; // Set default for NEW record
+                $flight->fk_id_status_code = $defaultStatus->id_status_code;
+                $flight->fk_id_gate_code = Gate::where('id', self::UNASSIGNED_GATE_ID)->first()->id_gate_code ?? null;
+                $flight->fk_id_belt_code = BaggageBelt::where('id', self::UNASSIGNED_BELT_ID)->first()->id_belt_code ?? null;
             }
 
             // 2. Map basic attributes
@@ -100,7 +100,7 @@ class N8nFlightSyncerService implements FlightSyncer
             if (!empty($payload['status_code'])) {
                 $status = FlightStatus::where('status_code', $payload['status_code'])->first();
                 if ($status) {
-                    $flight->status_id = $status->id;
+                    $flight->fk_id_status_code = $status->id_status_code;
                 } else {
                     Log::warning('Status code not found during flight sync. Defaulting to existing status.', ['status_code' => $payload['status_code']]);
                 }
@@ -109,34 +109,34 @@ class N8nFlightSyncerService implements FlightSyncer
             // 4. Resolve Gate ID - ONLY update if 'gate_code' is present in the payload.
             if (array_key_exists('gate_code', $payload)) {
                 $gateCode = $payload['gate_code'];
-                $resolvedGateId = self::UNASSIGNED_GATE_ID; 
+                $resolvedGateCode = Gate::where('id', self::UNASSIGNED_GATE_ID)->first()->id_gate_code ?? null;
 
                 if (!empty($gateCode)) {
                     $gate = Gate::where('gate_code', $gateCode)->first();
                     if ($gate) {
-                        $resolvedGateId = $gate->id;
+                        $resolvedGateCode = $gate->id_gate_code;
                     } else {
                          Log::warning('Gate code not found during flight sync. Defaulting to UNASSIGNED.', ['gate_code' => $gateCode]);
                     }
                 }
-                $flight->gate_id = $resolvedGateId;
+                $flight->fk_id_gate_code = $resolvedGateCode;
             }
 
 
-            // 5. Resolve Baggage Claim ID - ONLY update if 'claim_area' is present in the payload.
-            if (array_key_exists('claim_area', $payload)) {
-                $claimArea = $payload['claim_area'];
-                $resolvedClaimId = self::UNASSIGNED_CLAIM_ID;
+            // 5. Resolve Baggage Belt ID - ONLY update if 'belt_code' is present in the payload.
+            if (array_key_exists('belt_code', $payload)) {
+                $beltCode = $payload['belt_code'];
+                $resolvedBeltCode = BaggageBelt::where('id', self::UNASSIGNED_BELT_ID)->first()->id_belt_code ?? null;
 
-                if (!empty($claimArea)) {
-                    $claim = BaggageClaim::where('claim_area', $claimArea)->first();
-                    if ($claim) {
-                        $resolvedClaimId = $claim->id;
+                if (!empty($beltCode)) {
+                    $belt = BaggageBelt::where('belt_code', $beltCode)->first();
+                    if ($belt) {
+                        $resolvedBeltCode = $belt->id_belt_code;
                     } else {
-                        Log::warning('Baggage claim area not found during flight sync. Defaulting to UNASSIGNED.', ['claim_area' => $claimArea]);
+                        Log::warning('Baggage belt code not found during flight sync. Defaulting to UNASSIGNED.', ['belt_code' => $beltCode]);
                     }
                 }
-                $flight->baggage_claim_id = $resolvedClaimId;
+                $flight->fk_id_belt_code = $resolvedBeltCode;
             }
 
             // 6. Save the Flight Record

@@ -29,10 +29,10 @@ class Terminal extends Model
     }
 
     /**
-     * Get all baggage claims in this terminal.
+     * Get all baggage belts in this terminal.
      */
-    public function baggageClaims(): Relations\HasMany
+    public function baggageBelts(): Relations\HasMany
     {
-        return $this->hasMany(BaggageClaim::class, 'terminal_id');
+        return $this->hasMany(BaggageBelt::class, 'terminal_id');
     }
 }

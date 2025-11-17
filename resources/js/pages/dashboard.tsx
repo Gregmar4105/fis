@@ -41,19 +41,19 @@ interface DashboardStats {
     boarding: number;
 }
 
-interface ActiveFlight {
+interface DashboardFlight {
     id: number;
     flight_number: string;
     airline: string;
     origin: string;
     destination: string;
     scheduled_departure: string;
-    scheduled_arrival: string | null;
+    scheduled_arrival: string;
     status: string;
     status_code: string;
     gate: string | null;
     terminal: string | null;
-    baggage_claim: string | null;
+    baggage_belt: string | null;
 }
 
 interface SystemAlert {
@@ -277,8 +277,8 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                {flight.baggage_claim ? (
-                                                    <span className="font-mono text-sm">{flight.baggage_claim}</span>
+                                                {flight.baggage_belt ? (
+                                                    <span className="font-mono text-sm">{flight.baggage_belt}</span>
                                                 ) : (
                                                     <span className="text-muted-foreground text-sm">N/A</span>
                                                 )}

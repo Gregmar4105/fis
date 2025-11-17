@@ -6,7 +6,7 @@ use App\Contracts\StatusUpdater; // Your Abstract Product!
 use App\Models\Flight;
 use App\Models\FlightEvent;
 use App\Models\Gate;
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -65,41 +65,41 @@ class FlightOperationsService
     }
 
     /**
-     * Business logic for an admin manually assigning a baggage claim.
+     * Business logic for an admin manually assigning a baggage belt.
      */
-    public function assignBaggageClaim(Flight $flight, BaggageClaim $newClaim): Flight
+    public function assignBaggageBelt(Flight $flight, BaggageBelt $newBelt): Flight
     {
-        // Accessing baggage_claim_id through the arrival fact table is correct.
-        $oldClaimId = $flight->arrival->baggage_claim_id ?? null;
+        // Accessing baggage_belt_id through the arrival fact table is correct.
+        $oldBeltId = $flight->arrival->baggage_belt_id ?? null;
 
-        if ($oldClaimId === $newClaim->id) {
+        if ($oldBeltId === $newBelt->id) {
             return $flight; // No change
         }
 
-        DB::transaction(function () use ($flight, $newClaim, $oldClaimId) {
-            // 1. Update local DB (the arrival fact table holds the assigned claim area)
+        DB::transaction(function () use ($flight, $newBelt, $oldBeltId) {
+            // 1. Update local DB (the arrival fact table holds the assigned belt)
             $flight->arrival()->updateOrCreate(
                 ['flight_id' => $flight->id],
-                ['baggage_claim_id' => $newClaim->id]
+                ['baggage_belt_id' => $newBelt->id]
             );
 
             // 2. Log audit event
             FlightEvent::create([
                 'flight_id' => $flight->id,
-                'event_type' => 'CLAIM_CHANGE',
-                'old_fk_id' => $oldClaimId,
-                'new_fk_id' => $newClaim->id,
+                'event_type' => 'BELT_CHANGE',
+                'old_fk_id' => $oldBeltId,
+                'new_fk_id' => $newBelt->id,
             ]);
         });
 
         // 3. Notify external systems (PMS, BHS)
         try {
-            $this->statusUpdater->updateBaggageClaim($flight, $newClaim);
+            $this->statusUpdater->updateBaggageBelt($flight, $newBelt);
         } catch (\Exception $e) {
-            Log::error('N8N baggage claim update notification failed.', ['flight_id' => $flight->id, 'error' => $e->getMessage()]);
+            Log::error('N8N baggage belt update notification failed.', ['flight_id' => $flight->id, 'error' => $e->getMessage()]);
         }
 
-        return $flight->fresh('arrival.baggageClaim');
+        return $flight->fresh('arrival.baggageBelt');
     }
 
     /**

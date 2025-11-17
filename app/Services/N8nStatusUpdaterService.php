@@ -6,7 +6,7 @@ use App\Contracts\StatusUpdater;
 use App\Models\Flight;
 use App\Models\FlightEvent;
 use App\Models\FlightStatus;
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use App\Models\Gate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -49,23 +49,22 @@ class N8nStatusUpdaterService implements StatusUpdater
                 throw new \Exception("Flight or new Status not found for ID: {$flightId}.");
             }
 
-            $oldStatusId = $flight->status_id;
-            $newStatusId = $newStatus->id;
+            $oldStatusCode = $flight->fk_id_status_code;
+            $newStatusCodeValue = $newStatus->id_status_code;
 
             // Only update and log if the status actually changed
-            if ($oldStatusId !== $newStatusId) {
+            if ($oldStatusCode !== $newStatusCodeValue) {
 
                 // 1. Update the Flight record (The core status change)
-                $flight->status_id = $newStatusId;
+                $flight->fk_id_status_code = $newStatusCodeValue;
                 $flight->save();
 
                 // 2. Log the change in the *correct* history table (The Audit Trail)
                 FlightEvent::create([
                     'flight_id' => $flightId,
                     'event_type' => 'STATUS_CHANGE', 
-                    'old_fk_id' => $oldStatusId,
-                    'new_fk_id' => $newStatusId,
-                    'new_value' => $newStatusCode, 
+                    'old_value' => $oldStatusCode,
+                    'new_value' => $newStatusCodeValue,
                     'timestamp' => $timestamp,
                 ]);
             }
@@ -101,9 +100,9 @@ class N8nStatusUpdaterService implements StatusUpdater
     }
 
     /**
-     * Notify n8n that a baggage claim has changed.
+     * Notify n8n that a baggage belt has changed.
      */
-    public function updateBaggageClaim(Flight $flight, BaggageClaim $newClaim): bool
+    public function updateBaggageBelt(Flight $flight, BaggageBelt $newBelt): bool
     {
         $webhookUrl = config('services.n8n.webhooks.baggage_change');
          if (!$webhookUrl) {
@@ -111,12 +110,13 @@ class N8nStatusUpdaterService implements StatusUpdater
             return false;
         }
         
-        /** @var \App\Models\BaggageClaim $newClaim */
+        /** @var \App\Models\BaggageBelt $newBelt */
         $payload = [
             'flight_id' => $flight->id,
             'flight_number' => $flight->flight_number,
-            'new_claim_area' => $newClaim->claim_area ?? $newClaim->getAttribute('claim_area'),
-            'terminal_code' => $newClaim->terminal->terminal_code ?? null,
+            'new_belt_code' => $newBelt->belt_code ?? $newBelt->getAttribute('belt_code'),
+            'belt_status' => $newBelt->status ?? $newBelt->getAttribute('status'),
+            'terminal_code' => $newBelt->terminal->terminal_code ?? null,
         ];
 
         return $this->sendNotification($webhookUrl, $payload);

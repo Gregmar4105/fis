@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations;
  * @property int $id
  * @property string $status_code
  * @property string $status_name
+ * @property string $id_status_code
  */
 class FlightStatus extends Model
 {
@@ -23,6 +24,6 @@ class FlightStatus extends Model
      */
     public function flights(): Relations\HasMany
     {
-        return $this->hasMany(Flight::class, 'status_id');
+        return $this->hasMany(Flight::class, 'fk_id_status_code', 'id_status_code');
     }
 }

@@ -52,8 +52,8 @@ interface Gate {
     terminal?: Terminal;
 }
 
-interface BaggageClaim {
-    claim_number: string;
+interface BaggageBelt {
+    belt_code: string;
 }
 
 interface FlightConnection {
@@ -83,10 +83,10 @@ interface Flight {
         gate?: Gate;
     };
     arrival?: {
-        baggage_claim?: BaggageClaim;
+        baggage_belt?: BaggageBelt;
     };
     gate?: Gate;
-    baggageClaim?: BaggageClaim;
+    baggageBelt?: BaggageBelt;
     
     // Connection info
     inbound_connections?: FlightConnection[];
@@ -373,11 +373,11 @@ export default function FlightsIndex({ flights, scheduleType, localAirport }: Fl
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                        ) : flight.type === 'Arrival' && (flight.arrival?.baggage_claim || flight.baggageClaim) ? (
+                                                        ) : flight.type === 'Arrival' && (flight.arrival?.baggage_belt || flight.baggageBelt) ? (
                                                             <div className="flex items-center gap-1">
                                                                 <MapPin className="w-3 h-3 text-blue-600" />
                                                                 <span className="font-medium">
-                                                                    Claim {(flight.arrival?.baggage_claim || flight.baggageClaim)?.claim_number}
+                                                                    Belt {(flight.arrival?.baggage_belt || flight.baggageBelt)?.belt_code}
                                                                 </span>
                                                             </div>
                                                         ) : (

@@ -35,16 +35,17 @@ interface CurrentFlight {
     scheduled_arrival: string;
 }
 
-interface BaggageClaim {
+interface BaggageBelt {
     id: number;
-    claim_area: string;
+    belt_code: string;
+    status: string;
     terminal: Terminal;
     current_flights: CurrentFlight[];
     is_active: boolean;
 }
 
-interface PaginatedBaggageClaims {
-    data: BaggageClaim[];
+interface PaginatedBaggageBelts {
+    data: BaggageBelt[];
     current_page: number;
     last_page: number;
     per_page: number;
@@ -63,50 +64,75 @@ interface FiltersState {
 interface StatsSummary {
     total: number;
     active: number;
+    maintenance: number;
 }
 
 interface Props {
-    baggageClaims: PaginatedBaggageClaims;
+    baggageBelts: PaginatedBaggageBelts;
     terminals?: Terminal[];
     filters?: FiltersState;
     stats?: StatsSummary;
 }
 
-export default function BaggageClaimManagement({ baggageClaims, terminals = [], filters = {}, stats = { total: baggageClaims.total || 0, active: 0 } }: Props) {
-    const [selectedClaim, setSelectedClaim] = useState<BaggageClaim | null>(null);
+export default function BaggageBeltManagement({ baggageBelts, terminals = [], filters = {}, stats = { total: baggageBelts.total || 0, active: 0, maintenance: 0 } }: Props) {
+    const [selectedBelt, setSelectedBelt] = useState<BaggageBelt | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
     
-    const claimsList = baggageClaims.data || [];
+    const beltsList = baggageBelts.data || [];
 
     const [searchTerm, setSearchTerm] = useState(filters.search ?? '');
     const [terminalFilter, setTerminalFilter] = useState(filters.terminal ?? '');
     const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
-    const [perPage, setPerPage] = useState(String(filters.per_page ?? baggageClaims.per_page ?? 10));
+    const [perPage, setPerPage] = useState(String(filters.per_page ?? baggageBelts.per_page ?? 10));
 
-    const createForm = useForm({ terminal_id: '', claim_area: '', is_active: true });
-    const editForm = useForm({ terminal_id: '', claim_area: '', is_active: true });
+    const createForm = useForm({
+        terminal_id: '',
+        belt_code: '',
+        status: 'Active',
+    });
+
+    const editForm = useForm({
+        terminal_id: '',
+        belt_code: '',
+        status: '',
+    });
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Airport Resources', href: '#' },
-        { title: 'Baggage Claims', href: '/management/baggage-claims' },
+        { title: 'Baggage Belts', href: '/management/baggage-belts' },
     ];
 
-    const handleDelete = (claim: BaggageClaim) => {
-        setSelectedClaim(claim);
+    const handleDelete = (belt: BaggageBelt) => {
+        setSelectedBelt(belt);
         setShowDeleteDialog(true);
     };
 
     const confirmDelete = () => {
-        if (selectedClaim) {
-            router.delete(`/management/baggage-claims/${selectedClaim.id}`, {
+        if (selectedBelt) {
+            router.delete(`/management/baggage-belts/${selectedBelt.id}`, {
                 onSuccess: () => {
                     setShowDeleteDialog(false);
-                    setSelectedClaim(null);
+                    setSelectedBelt(null);
                 },
             });
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Active':
+                return 'bg-green-500/20 text-green-400 border-green-500/30';
+            case 'Maintenance':
+                return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+            case 'Closed':
+                return 'bg-red-500/20 text-red-400 border-red-500/30';
+            case 'Scheduled':
+                return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+            default:
+                return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
         }
     };
 
@@ -121,7 +147,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
 
     const applyFilters = (page?: number) => {
         const params = buildParams(page ? { page } : {});
-        router.get('/management/baggage-claims', params, { preserveState: true, replace: true, preserveScroll: true });
+        router.get('/management/baggage-belts', params, { preserveState: true, replace: true, preserveScroll: true });
     };
 
     const resetFilters = () => {
@@ -129,86 +155,66 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
         setTerminalFilter('');
         setStatusFilter('');
         setPerPage('10');
-        router.get('/management/baggage-claims', {}, { replace: true });
+        router.get('/management/baggage-belts', {}, { replace: true });
     };
 
     const openCreateDialog = () => { createForm.reset(); setShowCreateDialog(true); };
 
-    const openEditDialog = (claim: BaggageClaim) => {
-        setSelectedClaim(claim);
-        editForm.setData({ terminal_id: String(claim.terminal.id), claim_area: claim.claim_area, is_active: claim.is_active });
+    const openEditDialog = (belt: BaggageBelt) => {
+        setSelectedBelt(belt);
+        editForm.setData({ terminal_id: String(belt.terminal.id), belt_code: belt.belt_code, status: belt.status });
         setShowEditDialog(true);
     };
 
     const paginationLabel = useMemo(() => {
-        const from = baggageClaims.from ?? ((baggageClaims.current_page - 1) * baggageClaims.per_page) + 1;
-        const to = baggageClaims.to ?? Math.min(baggageClaims.current_page * baggageClaims.per_page, baggageClaims.total);
-        return `Showing ${from} to ${to} of ${baggageClaims.total} entries`;
-    }, [baggageClaims.from, baggageClaims.to, baggageClaims.current_page, baggageClaims.per_page, baggageClaims.total]);
+        const from = baggageBelts.from ?? ((baggageBelts.current_page - 1) * baggageBelts.per_page) + 1;
+        const to = baggageBelts.to ?? Math.min(baggageBelts.current_page * baggageBelts.per_page, baggageBelts.total);
+        return `Showing ${from} to ${to} of ${baggageBelts.total} results`;
+    }, [baggageBelts.from, baggageBelts.to, baggageBelts.current_page, baggageBelts.per_page, baggageBelts.total]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Baggage Claim Management" />
+            <Head title="Baggage Belt Management" />
 
             <div className="space-y-6 py-6 px-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                             <Luggage className="w-8 h-8 text-primary" />
-                            Baggage Claim Management
+                            Baggage Belt Management
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Manage baggage claim areas and flight assignments
+                            Manage baggage belt areas and flight assignments
                         </p>
                     </div>
                     <Button 
                         className="gap-2"
-                        onClick={() => alert('Baggage claim creation form coming soon')}
+                        onClick={() => alert('Baggage belt creation form coming soon')}
                     >
                         <Plus className="w-4 h-4" />
-                        Add Baggage Claim
+                        Add Baggage Belt
                     </Button>
                 </div>
 
                 <Separator />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium">Total Claims</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats?.total ?? baggageClaims.total}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium">Active</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-500">
-                                {stats?.active ?? claimsList.filter((c: BaggageClaim) => c.is_active).length}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Filters</CardTitle>
+                        <CardTitle>Baggage Belts ({beltsList.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-4 mb-4">
                             <div className="space-y-2">
-                                <Label htmlFor="claim-search">Search</Label>
+                                <Label htmlFor="belt-search">Search</Label>
                                 <div className="relative">
                                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                    <Input id="claim-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" placeholder="Claim area or flight" />
+                                    <Input id="belt-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" placeholder="Belt code or flight" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="claim-terminal">Terminal</Label>
+                                <Label htmlFor="belt-terminal">Terminal</Label>
                                 <Select value={terminalFilter || 'all'} onValueChange={(v) => setTerminalFilter(v === 'all' ? '' : v)}>
-                                    <SelectTrigger id="claim-terminal"><SelectValue placeholder="All" /></SelectTrigger>
+                                    <SelectTrigger id="belt-terminal"><SelectValue placeholder="All" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
                                         {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
@@ -216,20 +222,21 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="claim-status">Status</Label>
+                                <Label htmlFor="belt-status">Status</Label>
                                 <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
-                                    <SelectTrigger id="claim-status"><SelectValue placeholder="Any" /></SelectTrigger>
+                                    <SelectTrigger id="belt-status"><SelectValue placeholder="Any" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Any</SelectItem>
                                         <SelectItem value="Active">Active</SelectItem>
-                                        <SelectItem value="Idle">Idle</SelectItem>
+                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                        <SelectItem value="Closed">Closed</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="claim-per-page">Per Page</Label>
-                                <Select value={perPage} onValueChange={(v) => { setPerPage(v); const params = buildParams(); params.per_page = Number(v); router.get('/management/baggage-claims', params, { preserveState: true, replace: true, preserveScroll: true }); }}>
-                                    <SelectTrigger id="claim-per-page"><SelectValue /></SelectTrigger>
+                                <Label htmlFor="belt-per-page">Per Page</Label>
+                                <Select value={perPage} onValueChange={(v) => { setPerPage(v); const params = buildParams(); params.per_page = Number(v); router.get('/management/baggage-belts', params, { preserveState: true, replace: true, preserveScroll: true }); }}>
+                                    <SelectTrigger id="belt-per-page"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="10">10</SelectItem>
                                         <SelectItem value="25">25</SelectItem>
@@ -242,9 +249,10 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                             <Button onClick={() => applyFilters()}>Apply</Button>
                             <Button variant="outline" onClick={() => resetFilters()}>Reset</Button>
                             <Button className="ml-auto" onClick={() => setShowCreateDialog(true)}>
-                                <Plus className="w-4 h-4" /> Add Baggage Claim
+                                <Plus className="w-4 h-4" /> Add Baggage Belt
                             </Button>
                         </div>
+
                     </CardContent>
                 </Card>
 
@@ -253,72 +261,80 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Claim Area</TableHead>
-                                    <TableHead>Terminal</TableHead>
+                                    <TableHead>Belt Code</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Current Arrivals</TableHead>
+                                    <TableHead>Terminal</TableHead>
+                                    <TableHead>Current Flights</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {claimsList.length === 0 ? (
+                                {beltsList.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                            No baggage claim areas found.
+                                            No baggage belts found. Add one to get started.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    claimsList.map((claim) => (
-                                        <TableRow key={claim.id}>
-                                            <TableCell className="font-medium">
+                                    beltsList.map((belt) => (
+                                        <TableRow key={belt.id}>
+                                            <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <Luggage className="w-4 h-4 text-muted-foreground" />
-                                                    {claim.claim_area}
+                                                    <span className="font-medium">{belt.belt_code}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div>
-                                                    <div className="font-medium">{claim.terminal.name}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {claim.terminal.code}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={claim.is_active ? 'default' : 'secondary'}>
-                                                    {claim.is_active ? 'Active' : 'Idle'}
+                                                <Badge variant="outline" className={getStatusColor(belt.status)}>
+                                                    {belt.status}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
-                                                {claim.current_flights.length > 0 ? (
-                                                    <div className="space-y-1">
-                                                        {claim.current_flights.map((flight, idx) => (
-                                                            <div key={idx} className="text-sm flex items-center gap-2">
+                                                <div>
+                                                    <div className="font-medium">{belt.terminal.code}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {belt.terminal.name}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {belt.current_flights.length === 0 ? (
+                                                    <span className="text-muted-foreground text-sm">No active flights</span>
+                                                ) : (
+                                                    <div className="flex flex-col gap-1">
+                                                        {belt.current_flights.slice(0, 2).map((flight, idx) => (
+                                                            <div key={idx} className="flex items-center gap-2 text-sm">
                                                                 <Plane className="w-3 h-3 text-muted-foreground" />
                                                                 <span className="font-medium">{flight.flight_number}</span>
-                                                                <span className="text-muted-foreground">from {flight.origin}</span>
+                                                                <span className="text-muted-foreground">
+                                                                    from {flight.origin}
+                                                                </span>
                                                             </div>
                                                         ))}
+                                                        {belt.current_flights.length > 2 && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                +{belt.current_flights.length - 2} more
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                ) : (
-                                                    <span className="text-sm text-muted-foreground">No active flights</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
+                                                <div className="flex justify-end gap-2">
                                                     <Button 
                                                         variant="ghost" 
-                                                        size="icon"
-                                                        onClick={() => openEditDialog(claim)}
+                                                        size="sm"
+                                                        onClick={() => openEditDialog(belt)}
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </Button>
                                                     <Button 
                                                         variant="ghost" 
-                                                        size="icon"
-                                                        onClick={() => handleDelete(claim)}
+                                                        size="sm"
+                                                        onClick={() => handleDelete(belt)}
+                                                        disabled={belt.is_active}
                                                     >
-                                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
@@ -327,25 +343,25 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                 )}
                             </TableBody>
                         </Table>
-                        
+
                         {/* Pagination */}
-                        {claimsList.length > 0 && (
-                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between pt-4">
+                        {baggageBelts.last_page > 1 && (
+                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between px-6 py-4 border-t">
                                 <div className="text-sm text-muted-foreground">{paginationLabel}</div>
-                                <div className="flex gap-1">
-                                    {baggageClaims.current_page > 1 && (
-                                        <Button variant="outline" size="sm" onClick={() => applyFilters(baggageClaims.current_page - 1)}>
-                                            ← Previous
+                                <div className="flex gap-2">
+                                    {baggageBelts.current_page > 1 && (
+                                        <Button variant="outline" size="sm" onClick={() => applyFilters(baggageBelts.current_page - 1)}>
+                                            Previous
                                         </Button>
                                     )}
-                                    {Array.from({ length: Math.min(5, baggageClaims.last_page) }, (_, i) => i + 1).map(page => (
-                                        <Button key={page} variant={page === baggageClaims.current_page ? 'default' : 'outline'} size="sm" className="w-8" onClick={() => applyFilters(page)}>
+                                    {Array.from({ length: Math.min(5, baggageBelts.last_page) }, (_, i) => i + 1).map(page => (
+                                        <Button key={page} variant={page === baggageBelts.current_page ? 'default' : 'outline'} size="sm" className="w-8" onClick={() => applyFilters(page)}>
                                             {page}
                                         </Button>
                                     ))}
-                                    {baggageClaims.current_page < baggageClaims.last_page && (
-                                        <Button variant="outline" size="sm" onClick={() => applyFilters(baggageClaims.current_page + 1)}>
-                                            Next →
+                                    {baggageBelts.current_page < baggageBelts.last_page && (
+                                        <Button variant="outline" size="sm" onClick={() => applyFilters(baggageBelts.current_page + 1)}>
+                                            Next
                                         </Button>
                                     )}
                                 </div>
@@ -358,9 +374,9 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                 <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Delete Baggage Claim</DialogTitle>
+                            <DialogTitle>Delete Baggage Belt</DialogTitle>
                             <DialogDescription>
-                                Are you sure you want to delete baggage claim area {selectedClaim?.claim_area}?
+                                Are you sure you want to delete belt <strong>{selectedBelt?.belt_code}</strong>?
                                 This action cannot be undone.
                             </DialogDescription>
                         </DialogHeader>
@@ -369,7 +385,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                 Cancel
                             </Button>
                             <Button variant="destructive" onClick={confirmDelete}>
-                                Delete Claim Area
+                                Delete
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -378,10 +394,10 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                 <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Create Baggage Claim</DialogTitle>
-                            <DialogDescription>Create a new baggage claim area.</DialogDescription>
+                            <DialogTitle>Create Baggage Belt</DialogTitle>
+                            <DialogDescription>Create a new baggage belt.</DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={(e) => { e.preventDefault(); createForm.post('/management/baggage-claims', { onSuccess: () => setShowCreateDialog(false) }); }} className="space-y-4">
+                        <form onSubmit={(e) => { e.preventDefault(); createForm.post('/management/baggage-belts', { onSuccess: () => setShowCreateDialog(false) }); }} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="create-terminal">Terminal *</Label>
                                 <Select value={createForm.data.terminal_id || 'none'} onValueChange={(v) => createForm.setData('terminal_id', v === 'none' ? '' : v)}>
@@ -393,8 +409,19 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="create-claim-area">Claim Area *</Label>
-                                <Input id="create-claim-area" value={createForm.data.claim_area} onChange={(e) => createForm.setData('claim_area', e.target.value)} required />
+                                <Label htmlFor="create-belt-code">Belt Code *</Label>
+                                <Input id="create-belt-code" value={createForm.data.belt_code} onChange={(e) => createForm.setData('belt_code', e.target.value)} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="create-status">Status</Label>
+                                <Select value={createForm.data.status} onValueChange={(v) => createForm.setData('status', v)}>
+                                    <SelectTrigger id="create-status"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Active">Active</SelectItem>
+                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                        <SelectItem value="Closed">Closed</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" type="button" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
@@ -408,9 +435,9 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                 <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Edit Baggage Claim</DialogTitle>
+                            <DialogTitle>Edit Baggage Belt</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={(e) => { e.preventDefault(); if (!selectedClaim) return; editForm.put(`/management/baggage-claims/${selectedClaim.id}`, { onSuccess: () => setShowEditDialog(false) }); }} className="space-y-4">
+                        <form onSubmit={(e) => { e.preventDefault(); if (!selectedBelt) return; editForm.put(`/management/baggage-belts/${selectedBelt.id}`, { onSuccess: () => setShowEditDialog(false) }); }} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="edit-terminal">Terminal</Label>
                                 <Select value={editForm.data.terminal_id || 'none'} onValueChange={(v) => editForm.setData('terminal_id', v === 'none' ? '' : v)}>
@@ -422,8 +449,19 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-claim-area">Claim Area</Label>
-                                <Input id="edit-claim-area" value={editForm.data.claim_area} onChange={(e) => editForm.setData('claim_area', e.target.value)} />
+                                <Label htmlFor="edit-belt-code">Belt Code</Label>
+                                <Input id="edit-belt-code" value={editForm.data.belt_code} onChange={(e) => editForm.setData('belt_code', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-status">Status</Label>
+                                <Select value={editForm.data.status || 'Active'} onValueChange={(v) => editForm.setData('status', v)}>
+                                    <SelectTrigger id="edit-status"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Active">Active</SelectItem>
+                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                        <SelectItem value="Closed">Closed</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" type="button" onClick={() => setShowEditDialog(false)}>Cancel</Button>

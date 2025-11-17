@@ -61,7 +61,7 @@ Route::middleware('auth:sanctum')->prefix('v1/admin')->name('api.v1.admin.')->gr
          ->name('flights.updateGate');
 
     // POST /api/v1/admin/flights/{flight}/baggage
-    Route::post('/flights/{flight}/baggage', [FlightOperationsController::class, 'updateBaggageClaim'])
+    Route::post('/flights/{flight}/baggage', [FlightOperationsController::class, 'updateBaggageBelt'])
          ->name('flights.updateBaggage');
 
     // POST /api/v1/admin/flights/{flight}/time

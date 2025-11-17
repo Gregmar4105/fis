@@ -2,7 +2,7 @@
 
 namespace App\Contracts; // Product Interface
 
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use App\Models\Flight;
 use App\Models\FlightStatus;
 use App\Models\Gate;
@@ -32,9 +32,9 @@ interface StatusUpdater
     public function updateGate(Flight $flight, Gate $newGate): bool;
 
     /**
-     * OUTBOUND: Update an external system (n8n) about a new baggage claim assignment.
+     * OUTBOUND: Update an external system (n8n) about a new baggage belt assignment.
      */
-    public function updateBaggageClaim(Flight $flight, BaggageClaim $newClaim): bool;
+    public function updateBaggageBelt(Flight $flight, BaggageBelt $newBelt): bool;
 
     /**
      * OUTBOUND: Update an external system (n8n) about a change in a flight's time.

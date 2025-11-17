@@ -5,7 +5,7 @@ namespace App\Http\Controllers\API\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Flight;
 use App\Models\Gate;
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use App\Services\FlightOperationsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -52,22 +52,22 @@ class FlightOperationsController extends Controller
     }
 
     /**
-     * Handle the admin API request to update a flight's baggage claim.
+     * Handle the admin API request to update a flight's baggage belt.
      * POST /api/admin/flights/{flight}/baggage
      */
-    public function updateBaggageClaim(Request $request, Flight $flight): JsonResponse
+    public function updateBaggageBelt(Request $request, Flight $flight): JsonResponse
     {
         $validated = $request->validate([
-            'baggage_claim_id' => 'required|integer|exists:baggage_claims,id',
+            'baggage_belt_id' => 'required|integer|exists:baggage_belts,id',
         ]);
 
-        $claim = BaggageClaim::find($validated['baggage_claim_id']);
+        $belt = BaggageBelt::find($validated['baggage_belt_id']);
 
-        $this->flightService->assignBaggageClaim($flight, $claim);
+        $this->flightService->assignBaggageBelt($flight, $belt);
         
         return response()->json([
-            'message' => 'Baggage claim assigned successfully.',
-            'flight' => $flight->load('arrival.baggageClaim')
+            'message' => 'Baggage belt assigned successfully.',
+            'flight' => $flight->load('arrival.baggageBelt')
         ]);
     }
 

@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations;
 
 /**
+ * @property int $id
+ * @property int $terminal_id
  * @property string|null $gate_code
+ * @property string|null $gate_type
+ * @property string $id_gate_code
  */
 class Gate extends Model
 {

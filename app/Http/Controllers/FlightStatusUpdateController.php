@@ -6,7 +6,7 @@ use App\Models\Flight;
 use App\Models\FlightStatus;
 use App\Models\FlightEvent;
 use App\Models\Gate;
-use App\Models\BaggageClaim;
+use App\Models\BaggageBelt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -46,7 +46,7 @@ class FlightStatusUpdateController extends Controller
             'origin',
             'destination',
             'gate.terminal',
-            'baggageClaim'
+            'baggageBelt'
         ])
             ->orderBy('scheduled_departure_time', 'desc')
             ->get()
@@ -67,9 +67,10 @@ class FlightStatusUpdateController extends Controller
                         'code' => $flight->gate?->gate_code,
                         'terminal' => $flight->gate?->terminal?->name ?? $flight->gate?->terminal?->terminal_code,
                     ],
-                    'baggage_claim' => [
-                        'id' => $flight->baggage_claim_id,
-                        'area' => $flight->baggageClaim?->claim_area,
+                    'baggage_belt' => [
+                        'id' => $flight->baggageBelt?->id,
+                        'code' => $flight->baggageBelt?->belt_code,
+                        'status' => $flight->baggageBelt?->status,
                     ],
                 ];
             });
@@ -90,11 +91,12 @@ class FlightStatusUpdateController extends Controller
                 'display' => ($gate->terminal?->terminal_code ?? '') . '-' . $gate->gate_code,
             ];
         });
-        $baggageClaims = BaggageClaim::with('terminal')->get()->map(function ($claim) {
+        $baggageBelts = BaggageBelt::with('terminal')->get()->map(function ($belt) {
             return [
-                'id' => $claim->id,
-                'area' => $claim->claim_area,
-                'terminal' => $claim->terminal?->name ?? $claim->terminal?->terminal_code,
+                'id' => $belt->id,
+                'code' => $belt->belt_code,
+                'status' => $belt->status,
+                'terminal' => $belt->terminal?->name ?? $belt->terminal?->terminal_code,
             ];
         });
 
@@ -103,7 +105,7 @@ class FlightStatusUpdateController extends Controller
             'options' => [
                 'statuses' => $statuses,
                 'gates' => $gates,
-                'baggageClaims' => $baggageClaims,
+                'baggageBelts' => $baggageBelts,
             ],
         ]);
     }
@@ -119,7 +121,8 @@ class FlightStatusUpdateController extends Controller
         ]);
 
         $oldStatus = $flight->status;
-        $flight->update(['status_id' => $validated['status_id']]);
+        $newStatus = FlightStatus::find($validated['status_id']);
+        $flight->update(['fk_id_status_code' => $newStatus->id_status_code]);
 
         // Log the status change event
         FlightEvent::create([
@@ -127,8 +130,6 @@ class FlightStatusUpdateController extends Controller
             'event_type' => 'status_change',
             'old_value' => $oldStatus?->status_name,
             'new_value' => $flight->status->status_name,
-            'old_fk_id' => $oldStatus?->id,
-            'new_fk_id' => $flight->status_id,
         ]);
 
         return redirect()->back()->with('success', 'Flight status updated successfully.');
@@ -145,7 +146,8 @@ class FlightStatusUpdateController extends Controller
         ]);
 
         $oldGate = $flight->gate;
-        $flight->update(['gate_id' => $validated['gate_id']]);
+        $newGate = $validated['gate_id'] ? Gate::find($validated['gate_id']) : null;
+        $flight->update(['fk_id_gate_code' => $newGate?->id_gate_code]);
 
         // Log the gate change event
         FlightEvent::create([
@@ -153,37 +155,34 @@ class FlightStatusUpdateController extends Controller
             'event_type' => 'gate_change',
             'old_value' => $oldGate?->gate_code,
             'new_value' => $flight->gate?->gate_code ?? 'Unassigned',
-            'old_fk_id' => $oldGate?->id,
-            'new_fk_id' => $flight->gate_id,
         ]);
 
         return redirect()->back()->with('success', 'Gate assignment updated successfully.');
     }
 
     /**
-     * Quick update baggage claim assignment.
+     * Quick update baggage belt assignment.
      */
     public function updateBaggageClaim(Request $request, Flight $flight)
     {
         $validated = $request->validate([
-            'baggage_claim_id' => 'nullable|exists:baggage_claims,id',
+            'baggage_belt_id' => 'nullable|exists:baggage_belts,id',
             'reason' => 'nullable|string|max:500',
         ]);
 
-        $oldClaim = $flight->baggageClaim;
-        $flight->update(['baggage_claim_id' => $validated['baggage_claim_id']]);
+        $oldBelt = $flight->baggageBelt;
+        $newBelt = $validated['baggage_belt_id'] ? BaggageBelt::find($validated['baggage_belt_id']) : null;
+        $flight->update(['fk_id_belt_code' => $newBelt?->id_belt_code]);
 
-        // Log the baggage claim change event
+        // Log the baggage belt change event
         FlightEvent::create([
             'flight_id' => $flight->id,
-            'event_type' => 'baggage_claim_change',
-            'old_value' => $oldClaim?->claim_area,
-            'new_value' => $flight->baggageClaim?->claim_area ?? 'Unassigned',
-            'old_fk_id' => $oldClaim?->id,
-            'new_fk_id' => $flight->baggage_claim_id,
+            'event_type' => 'baggage_belt_change',
+            'old_value' => $oldBelt?->belt_code,
+            'new_value' => $flight->baggageBelt?->belt_code ?? 'Unassigned',
         ]);
 
-        return redirect()->back()->with('success', 'Baggage claim assignment updated successfully.');
+        return redirect()->back()->with('success', 'Baggage belt assignment updated successfully.');
     }
 
     /**
@@ -194,7 +193,7 @@ class FlightStatusUpdateController extends Controller
         $validated = $request->validate([
             'flight_ids' => 'required|array',
             'flight_ids.*' => 'exists:flights,id',
-            'update_type' => 'required|in:status,gate,baggage_claim',
+            'update_type' => 'required|in:status,gate,baggage_belt',
             'value' => 'required',
             'reason' => 'nullable|string|max:500',
         ]);
@@ -205,43 +204,40 @@ class FlightStatusUpdateController extends Controller
             switch ($validated['update_type']) {
                 case 'status':
                     $oldStatus = $flight->status;
-                    $flight->update(['status_id' => $validated['value']]);
+                    $newStatus = FlightStatus::find($validated['value']);
+                    $flight->update(['fk_id_status_code' => $newStatus->id_status_code]);
                     
                     FlightEvent::create([
                         'flight_id' => $flight->id,
                         'event_type' => 'status_change',
                         'old_value' => $oldStatus?->status_name,
                         'new_value' => $flight->status->status_name,
-                        'old_fk_id' => $oldStatus?->id,
-                        'new_fk_id' => $flight->status_id,
                     ]);
                     break;
 
                 case 'gate':
                     $oldGate = $flight->gate;
-                    $flight->update(['gate_id' => $validated['value']]);
+                    $newGate = Gate::find($validated['value']);
+                    $flight->update(['fk_id_gate_code' => $newGate?->id_gate_code]);
                     
                     FlightEvent::create([
                         'flight_id' => $flight->id,
                         'event_type' => 'gate_change',
                         'old_value' => $oldGate?->gate_code,
                         'new_value' => $flight->gate?->gate_code ?? 'Unassigned',
-                        'old_fk_id' => $oldGate?->id,
-                        'new_fk_id' => $flight->gate_id,
                     ]);
                     break;
 
-                case 'baggage_claim':
-                    $oldClaim = $flight->baggageClaim;
-                    $flight->update(['baggage_claim_id' => $validated['value']]);
+                case 'baggage_belt':
+                    $oldBelt = $flight->baggageBelt;
+                    $newBelt = BaggageBelt::find($validated['value']);
+                    $flight->update(['fk_id_belt_code' => $newBelt?->id_belt_code]);
                     
                     FlightEvent::create([
                         'flight_id' => $flight->id,
-                        'event_type' => 'baggage_claim_change',
-                        'old_value' => $oldClaim?->claim_area,
-                        'new_value' => $flight->baggageClaim?->claim_area ?? 'Unassigned',
-                        'old_fk_id' => $oldClaim?->id,
-                        'new_fk_id' => $flight->baggage_claim_id,
+                        'event_type' => 'baggage_belt_change',
+                        'old_value' => $oldBelt?->belt_code,
+                        'new_value' => $flight->baggageBelt?->belt_code ?? 'Unassigned',
                     ]);
                     break;
             }

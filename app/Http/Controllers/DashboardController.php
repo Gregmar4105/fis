@@ -21,7 +21,7 @@ class DashboardController extends Controller
     {
         // Get flight status IDs (cached to reduce DB queries)
         $statuses = Cache::remember('flight_statuses', 3600, function () {
-            return FlightStatus::pluck('id', 'status_code')->toArray();
+            return FlightStatus::pluck('id_status_code', 'status_code')->toArray();
         });
 
         $scheduledId = $statuses['SCH'] ?? null;
@@ -38,7 +38,7 @@ class DashboardController extends Controller
         // Build base query for active flights (not arrived, departed, or cancelled)
         // Show flights from today onwards (not just today/tomorrow)
         $activeFlightsQuery = Flight::query()
-            ->whereNotIn('status_id', array_filter([$arrivedId, $departedId, $cancelledId]))
+            ->whereNotIn('fk_id_status_code', array_filter([$arrivedId, $departedId, $cancelledId]))
             ->where('scheduled_departure_time', '>=', $now->startOfDay());
 
         // Calculate statistics
@@ -46,9 +46,9 @@ class DashboardController extends Controller
             'totalFlights' => (clone $activeFlightsQuery)->count(),
             'arrivals' => (clone $activeFlightsQuery)->where('destination_code', 'MNL')->count(),
             'departures' => (clone $activeFlightsQuery)->where('origin_code', 'MNL')->count(),
-            'delayed' => $delayedId ? (clone $activeFlightsQuery)->where('status_id', $delayedId)->count() : 0,
-            'onTime' => $scheduledId ? (clone $activeFlightsQuery)->where('status_id', $scheduledId)->count() : 0,
-            'boarding' => $boardingId ? (clone $activeFlightsQuery)->where('status_id', $boardingId)->count() : 0,
+            'delayed' => $delayedId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $delayedId)->count() : 0,
+            'onTime' => $scheduledId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $scheduledId)->count() : 0,
+            'boarding' => $boardingId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $boardingId)->count() : 0,
         ];
 
         // Get active flights with full details for the dashboard
@@ -61,7 +61,7 @@ class DashboardController extends Controller
             'baggageClaim',
             'aircraft'
         ])
-            ->whereNotIn('status_id', array_filter([$arrivedId, $departedId, $cancelledId]))
+            ->whereNotIn('fk_id_status_code', array_filter([$arrivedId, $departedId, $cancelledId]))
             ->where('scheduled_departure_time', '>=', $now->startOfDay())
             ->orderBy('scheduled_departure_time', 'asc')
             ->limit(10)
@@ -79,7 +79,7 @@ class DashboardController extends Controller
                     'status_code' => $flight->status?->status_code,
                     'gate' => $flight->gate?->gate_code,
                     'terminal' => $flight->gate?->terminal?->name ?? $flight->gate?->terminal?->terminal_code,
-                    'baggage_claim' => $flight->baggageClaim?->claim_area,
+                    'baggage_belt' => $flight->baggageBelt?->belt_code,
                 ];
             });
 
@@ -99,6 +99,12 @@ class DashboardController extends Controller
     private function getSystemAlerts(): array
     {
         $alerts = [];
+
+        // Get status IDs from cache
+        $statuses = Cache::get('flight_statuses', []);
+        $scheduledId = $statuses['SCH'] ?? null;
+        $boardingId = $statuses['BRD'] ?? null;
+        $delayedId = $statuses['DLY'] ?? null;
 
         // Check for integration sync failures (using flight_events table)
         // Note: FlightEvent uses 'timestamp' column, not 'occurred_at'
@@ -124,12 +130,8 @@ class DashboardController extends Controller
         }
 
         // Check for flights with missing gate assignments (departing within 2 hours)
-        $missingGates = Flight::whereNull('gate_id')
-            ->where('status_id', function ($query) {
-                $query->select('id')
-                    ->from('flight_status')
-                    ->whereIn('status_code', ['SCH', 'BRD']);
-            })
+        $missingGates = Flight::whereNull('fk_id_gate_code')
+            ->whereIn('fk_id_status_code', [$scheduledId, $boardingId])
             ->where('scheduled_departure_time', '>=', now())
             ->where('scheduled_departure_time', '<=', now()->addHours(2))
             ->count();
@@ -145,13 +147,9 @@ class DashboardController extends Controller
         }
 
         // Check for delayed flights (upcoming flights only)
-        $delayedCount = Flight::where('status_id', function ($query) {
-                $query->select('id')
-                    ->from('flight_status')
-                    ->where('status_code', 'DLY');
-            })
+        $delayedCount = $delayedId ? Flight::where('fk_id_status_code', $delayedId)
             ->where('scheduled_departure_time', '>=', now()->startOfDay())
-            ->count();
+            ->count() : 0;
 
         if ($delayedCount > 0) {
             $alerts[] = [

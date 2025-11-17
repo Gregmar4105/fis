@@ -52,8 +52,8 @@ class FlightScheduleController extends Controller
             case 'arrivals':
                 // Flights arriving AT the local airport (MNL)
                 $query->where('destination_code', self::LOCAL_IATA_CODE)
-                      // Filter out ARRIVED flights (unless they're recent—this logic is simplified)
-                      ->where('status_id', '!=', FlightStatus::where('status_code', 'ARR')->first()->id ?? 3)
+                      // Filter out ARRIVED flights
+                      ->where('fk_id_status_code', '!=', FlightStatus::where('status_code', 'ARR')->first()->id_status_code ?? '3-ARR')
                       ->orderBy('scheduled_arrival_time', 'asc');
                 break;
                 
@@ -61,7 +61,7 @@ class FlightScheduleController extends Controller
                 // Flights departing FROM the local airport (MNL)
                 $query->where('origin_code', self::LOCAL_IATA_CODE)
                       // Filter out DEPARTED flights
-                      ->where('status_id', '!=', FlightStatus::where('status_code', 'DEP')->first()->id ?? 2)
+                      ->where('fk_id_status_code', '!=', FlightStatus::where('status_code', 'DEP')->first()->id_status_code ?? '2-DEP')
                       ->orderBy('scheduled_departure_time', 'asc');
                 break;
             
@@ -73,9 +73,9 @@ class FlightScheduleController extends Controller
         }
 
         // 2. Global Filter: Remove Cancelled and Completed flights from the list view
-        $query->whereNotIn('status_id', [
-            FlightStatus::where('status_code', 'ARR')->first()->id ?? 3,
-            FlightStatus::where('status_code', 'CNX')->first()->id ?? 5,
+        $query->whereNotIn('fk_id_status_code', [
+            FlightStatus::where('status_code', 'ARR')->first()->id_status_code ?? '3-ARR',
+            FlightStatus::where('status_code', 'CNX')->first()->id_status_code ?? '5-CNX',
         ]);
 
 

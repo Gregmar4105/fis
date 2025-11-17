@@ -15,9 +15,10 @@ use Illuminate\Database\Eloquent\Relations;
  * @property string $origin_code
  * @property string $destination_code
  * @property string|null $aircraft_icao_code
- * @property int $gate_id            // References gates.id (BIGINT UNSIGNED)
- * @property int $baggage_claim_id   // References baggage_claims.id (BIGINT UNSIGNED)
- * @property int $status_id          // References flight_status.id
+ * @property string|null $fk_id_terminal_code
+ * @property string|null $fk_id_gate_code
+ * @property string|null $fk_id_belt_code
+ * @property string|null $fk_id_status_code
  * @property \Illuminate\Support\Carbon $scheduled_departure_time
  * @property \Illuminate\Support\Carbon|null $scheduled_arrival_time
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -51,7 +52,7 @@ class Flight extends Model
      */
     public function status(): Relations\BelongsTo
     {
-        return $this->belongsTo(FlightStatus::class, 'status_id');
+        return $this->belongsTo(FlightStatus::class, 'fk_id_status_code', 'id_status_code');
     }
 
     /**
@@ -72,20 +73,29 @@ class Flight extends Model
     
     /**
      * Get the current/scheduled gate assigned to the flight (FIDS data).
-     * This uses the gate_id field from the main flights table.
+     * This uses the fk_id_gate_code field from the main flights table.
      */
     public function gate(): Relations\BelongsTo
     {
-        return $this->belongsTo(Gate::class, 'gate_id');
+        return $this->belongsTo(Gate::class, 'fk_id_gate_code', 'id_gate_code');
     }
 
     /**
-     * Get the current/scheduled baggage claim assigned to the flight (FIDS data).
-     * This uses the baggage_claim_id field from the main flights table.
+     * Get the current/scheduled baggage belt assigned to the flight (FIDS data).
+     * This uses the fk_id_belt_code field from the main flights table.
+     */
+    public function baggageBelt(): Relations\BelongsTo
+    {
+        return $this->belongsTo(BaggageBelt::class, 'fk_id_belt_code', 'id_belt_code');
+    }
+
+    /**
+     * Alias for backward compatibility.
+     * @deprecated Use baggageBelt() instead
      */
     public function baggageClaim(): Relations\BelongsTo
     {
-        return $this->belongsTo(BaggageClaim::class, 'baggage_claim_id');
+        return $this->baggageBelt();
     }
     
     /**

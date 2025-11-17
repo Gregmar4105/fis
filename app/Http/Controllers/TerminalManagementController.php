@@ -13,21 +13,45 @@ class TerminalManagementController extends Controller
     /**
      * Display a listing of terminals.
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $terminals = Terminal::with([
-            'airport',
-            'gates' => function ($query) {
-                $query->withCount('departures');
-            },
-            'baggageClaims'
-        ])->paginate(10)->withQueryString();
+        $perPage = $this->resolvePerPage($request->integer('per_page', 10));
 
-        $airports = Airport::all(['iata_code', 'airport_name']);
+        $query = Terminal::with(['airport'])
+            ->withCount(['gates', 'baggageBelts']);
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('terminal_code', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('airport')) {
+            $query->where('iata_code', $request->string('airport'));
+        }
+
+        $terminals = $query
+            ->orderBy('terminal_code')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $airports = Airport::orderBy('airport_name')->get(['iata_code', 'airport_name']);
 
         return Inertia::render('management/terminals', [
             'terminals' => $terminals,
             'airports' => $airports,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'airport' => $request->input('airport', ''),
+                'per_page' => $perPage,
+            ],
+            'stats' => [
+                'total' => Terminal::count(),
+                'with_gates' => Terminal::has('gates')->count(),
+                'with_belts' => Terminal::has('baggageBelts')->count(),
+            ],
         ]);
     }
 
@@ -55,6 +79,7 @@ class TerminalManagementController extends Controller
         $validated = $request->validate([
             'terminal_code' => 'sometimes|string|max:10',
             'name' => 'nullable|string|max:255',
+            'iata_code' => 'sometimes|exists:airports,iata_code',
         ]);
 
         $terminal->update($validated);
@@ -68,12 +93,18 @@ class TerminalManagementController extends Controller
     public function destroy(Terminal $terminal)
     {
         // Check if terminal has gates or baggage claims
-        if ($terminal->gates()->exists() || $terminal->baggageClaims()->exists()) {
+        if ($terminal->gates()->exists() || $terminal->baggageBelts()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete terminal with assigned gates or baggage claims.');
         }
 
         $terminal->delete();
 
         return redirect()->back()->with('success', 'Terminal deleted successfully.');
+    }
+
+    protected function resolvePerPage(int $perPage): int
+    {
+        $options = [10, 25, 50];
+        return in_array($perPage, $options, true) ? $perPage : 10;
     }
 }

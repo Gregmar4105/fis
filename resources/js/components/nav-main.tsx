@@ -167,12 +167,12 @@ export function NavMain() {
                     <SidebarMenuItem>
                         <SidebarMenuButton 
                             asChild 
-                            isActive={currentUrl.includes('/management/baggage-claims')}
-                            tooltip="Baggage Claim Management"
+                            isActive={currentUrl.includes('/management/baggage-belts')}
+                            tooltip="Baggage Belt Management"
                         >
-                            <Link href="/management/baggage-claims">
+                            <Link href="/management/baggage-belts">
                                 <Luggage className="w-4 h-4" />
-                                <span>Baggage Claims</span>
+                                <span>Baggage Belts</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
