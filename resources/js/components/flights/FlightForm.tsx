@@ -193,24 +193,7 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                 {form.errors?.aircraft_icao_code && <div className="text-destructive text-sm mt-1">{form.errors.aircraft_icao_code}</div>}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-                <div className="grid gap-2">
-                    <Label>Terminal</Label>
-                    <Select value={form.data.fk_id_terminal_code ?? ''} onValueChange={(v: any) => form.setData('fk_id_terminal_code', v)}>
-                        <SelectTrigger id="fk_id_terminal_code"><SelectValue placeholder="Select terminal" /></SelectTrigger>
-                        <SelectContent>
-                            {allTerminals.map((t: any) => {
-                                const terminalCode = t.id_terminal_code || t.idTerminalCode || (t.id && t.terminal_code ? `${t.id}-${t.terminal_code}` : String(t.id));
-                                return (
-                                    <SelectItem key={`terminal-${t.id}`} value={terminalCode}>
-                                        {t.terminal_code || t.terminal_name || t.name || `Terminal ${t.id}`}
-                                    </SelectItem>
-                                );
-                            })}
-                        </SelectContent>
-                    </Select>
-                </div>
-
+            <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                     <Label htmlFor="origin_code">Origin *</Label>
                     <Select value={form.data.origin_code ?? ''} onValueChange={(v: any) => form.setData('origin_code', v)}>
@@ -252,32 +235,6 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                             </div>
                             {((options.airports || []).filter((ap: any) => !destinationLetter || (ap.iata_code || '').startsWith(destinationLetter))).map((ap: any) => (
                                 <SelectItem key={`airport-${ap.iata_code}`} value={ap.iata_code}>{ap.iata_code} - {ap.city}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label>Origin Gate</Label>
-                    <Select value={form.data.gate_id ?? ''} onValueChange={(v: any) => form.setData('gate_id', v)}>
-                        <SelectTrigger id="gate_id"><SelectValue placeholder="Select gate" /></SelectTrigger>
-                        <SelectContent>
-                            {departureGates.map((g: any) => (
-                                <SelectItem key={`gate-${g.id}-${g.gate_code ?? ''}`} value={String(g.id)}>{g.gate_code ?? g.id}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label>Arrival Gate</Label>
-                    <Select value={form.data.arrival_gate_id ?? ''} onValueChange={(v: any) => form.setData('arrival_gate_id', v)}>
-                        <SelectTrigger id="arrival_gate_id"><SelectValue placeholder="Select gate" /></SelectTrigger>
-                        <SelectContent>
-                            {arrivalGates.map((g: any) => (
-                                <SelectItem key={`gate-${g.id}-${g.gate_code ?? ''}`} value={String(g.id)}>{g.gate_code ?? g.id}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -366,7 +323,69 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
 
             {showAdvanced && (
                 <div className="space-y-4 border rounded p-3">
-                    <div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label>Origin Terminal</Label>
+                            <Select value={form.data.origin_terminal_id ?? ''} onValueChange={(v: any) => form.setData('origin_terminal_id', v)}>
+                                <SelectTrigger id="origin_terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
+                                <SelectContent>
+                                    {originTerminals.map((t: any) => {
+                                        const terminalCode = t.id_terminal_code || t.idTerminalCode || (t.id && t.terminal_code ? `${t.id}-${t.terminal_code}` : String(t.id));
+                                        return (
+                                            <SelectItem key={`origin-terminal-${t.id}`} value={String(t.id)}>
+                                                {t.terminal_code || t.terminal_name || t.name || `Terminal ${t.id}`}
+                                            </SelectItem>
+                                        );
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Destination Terminal</Label>
+                            <Select value={form.data.destination_terminal_id ?? ''} onValueChange={(v: any) => form.setData('destination_terminal_id', v)}>
+                                <SelectTrigger id="destination_terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
+                                <SelectContent>
+                                    {destinationTerminals.map((t: any) => {
+                                        const terminalCode = t.id_terminal_code || t.idTerminalCode || (t.id && t.terminal_code ? `${t.id}-${t.terminal_code}` : String(t.id));
+                                        return (
+                                            <SelectItem key={`destination-terminal-${t.id}`} value={String(t.id)}>
+                                                {t.terminal_code || t.terminal_name || t.name || `Terminal ${t.id}`}
+                                            </SelectItem>
+                                        );
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label>Origin Gate</Label>
+                            <Select value={form.data.gate_id ?? ''} onValueChange={(v: any) => form.setData('gate_id', v)}>
+                                <SelectTrigger id="gate_id"><SelectValue placeholder="Select gate" /></SelectTrigger>
+                                <SelectContent>
+                                    {departureGates.map((g: any) => (
+                                        <SelectItem key={`gate-${g.id}-${g.gate_code ?? ''}`} value={String(g.id)}>{g.gate_code ?? g.id}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Arrival Gate</Label>
+                            <Select value={form.data.arrival_gate_id ?? ''} onValueChange={(v: any) => form.setData('arrival_gate_id', v)}>
+                                <SelectTrigger id="arrival_gate_id"><SelectValue placeholder="Select gate" /></SelectTrigger>
+                                <SelectContent>
+                                    {arrivalGates.map((g: any) => (
+                                        <SelectItem key={`gate-${g.id}-${g.gate_code ?? ''}`} value={String(g.id)}>{g.gate_code ?? g.id}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2">
                         <Label>Baggage Belt</Label>
                         <Select value={form.data.baggage_belt_id ?? ''} onValueChange={(v: any) => form.setData('baggage_belt_id', v)}>
                             <SelectTrigger id="baggage_belt_id"><SelectValue placeholder="Select baggage belt" /></SelectTrigger>

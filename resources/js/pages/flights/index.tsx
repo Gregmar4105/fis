@@ -540,20 +540,28 @@ export default function FlightsIndex({ flights, scheduleType, localAirport, opti
                                 </div>
                                 <div className="flex gap-1">
                                     {flights.current_page > 1 && (
-                                        <Button variant="outline" size="sm">← Previous</Button>
+                                        <Link href={`/schedule/${scheduleType}?page=${flights.current_page - 1}`} preserveState>
+                                            <Button variant="outline" size="sm">← Previous</Button>
+                                        </Link>
                                     )}
-                                    {Array.from({ length: Math.min(5, flights.last_page) }, (_, i) => i + 1).map(page => (
-                                        <Button 
-                                            key={page}
-                                            variant={page === flights.current_page ? 'default' : 'outline'}
-                                            size="sm"
-                                            className="w-8"
-                                        >
-                                            {page}
-                                        </Button>
-                                    ))}
+                                    {Array.from({ length: Math.min(5, flights.last_page) }, (_, i) => {
+                                        const page = i + 1;
+                                        return (
+                                            <Link key={page} href={`/schedule/${scheduleType}?page=${page}`} preserveState>
+                                                <Button 
+                                                    variant={page === flights.current_page ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    className={`w-8 ${page === flights.current_page ? 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600' : ''}`}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            </Link>
+                                        );
+                                    })}
                                     {flights.current_page < flights.last_page && (
-                                        <Button variant="outline" size="sm">Next →</Button>
+                                        <Link href={`/schedule/${scheduleType}?page=${flights.current_page + 1}`} preserveState>
+                                            <Button variant="outline" size="sm">Next →</Button>
+                                        </Link>
                                     )}
                                 </div>
                             </div>

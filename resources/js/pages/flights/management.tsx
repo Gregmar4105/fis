@@ -475,9 +475,9 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-center w-20">
-                                                    {flight.baggage_belt ? (
+                                                    {flight.baggage_belt?.belt_code ? (
                                                         <span className="font-medium text-sm truncate">
-                                                            {flight.baggage_belt.belt_code || 'N/A'}
+                                                            {flight.baggage_belt.belt_code}
                                                         </span>
                                                     ) : (
                                                         <span className="font-bold text-sm">N/A</span>
@@ -574,7 +574,7 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                             key={page}
                                             variant={page === flights.current_page ? 'default' : 'outline'}
                                             size="sm"
-                                            className="w-8"
+                                            className={`w-8 ${page === flights.current_page ? 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600' : ''}`}
                                             onClick={() => router.get(`/flights/management`, { ...filters, page })}
                                         >
                                             {page}

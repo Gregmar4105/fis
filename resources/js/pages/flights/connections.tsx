@@ -511,12 +511,26 @@ export default function FlightConnections({ flights, title }: Props) {
                                 <div className="flex gap-1">
                                     {flights.current_page > 1 && (
                                         <Link href={`/connections?page=${flights.current_page - 1}`} preserveState>
-                                            <Button variant="outline" size="sm">Previous</Button>
+                                            <Button variant="outline" size="sm">← Previous</Button>
                                         </Link>
                                     )}
+                                    {Array.from({ length: Math.min(5, flights.last_page) }, (_, i) => {
+                                        const page = i + 1;
+                                        return (
+                                            <Link key={page} href={`/connections?page=${page}`} preserveState>
+                                                <Button 
+                                                    variant={page === flights.current_page ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    className={`w-8 ${page === flights.current_page ? 'bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600' : ''}`}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            </Link>
+                                        );
+                                    })}
                                     {flights.current_page < flights.last_page && (
                                         <Link href={`/connections?page=${flights.current_page + 1}`} preserveState>
-                                            <Button variant="outline" size="sm">Next</Button>
+                                            <Button variant="outline" size="sm">Next →</Button>
                                         </Link>
                                     )}
                                 </div>

@@ -37,6 +37,8 @@ type InitialData = Partial<{
     fk_id_status_code?: string;
     gate_id?: string | number;
     baggage_belt_id?: string | number;
+    origin_terminal_id?: string | number;
+    destination_terminal_id?: string | number;
     // UI-level fields used for connecting journeys
     journey_type?: string;
     connecting_departure_id?: string | number;
@@ -61,6 +63,8 @@ type FormData = {
     status_id: string;
     gate_id?: string;
     baggage_belt_id?: string;
+    origin_terminal_id?: string;
+    destination_terminal_id?: string;
     journey_type?: string;
     connecting_departure_id?: string;
     minimum_connecting_time?: string | number;
@@ -84,6 +88,8 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
         // Initialize gate and baggage_belt to empty strings to keep Selects controlled
         gate_id: initialData.gate_id ? String(initialData.gate_id) : '',
         baggage_belt_id: initialData.baggage_belt_id ? String(initialData.baggage_belt_id) : '',
+        origin_terminal_id: initialData.origin_terminal_id ? String(initialData.origin_terminal_id) : '',
+        destination_terminal_id: initialData.destination_terminal_id ? String(initialData.destination_terminal_id) : '',
         journey_type: (initialData as any).journey_type || 'direct',
         connecting_departure_id: (initialData as any).connecting_departure_id ? String((initialData as any).connecting_departure_id) : '',
         minimum_connecting_time: (initialData as any).minimum_connecting_time || '',
@@ -197,6 +203,8 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
             // Keep Select values as strings (empty string when not set) to avoid controlled/uncontrolled warnings
             form.setData('gate_id', initialData.gate_id ? String(initialData.gate_id) : '');
             form.setData('baggage_belt_id', initialData.baggage_belt_id ? String(initialData.baggage_belt_id) : '');
+            form.setData('origin_terminal_id', initialData.origin_terminal_id ? String(initialData.origin_terminal_id) : '');
+            form.setData('destination_terminal_id', initialData.destination_terminal_id ? String(initialData.destination_terminal_id) : '');
             form.setData('journey_type', (initialData as any).journey_type || 'direct');
             form.setData('connecting_departure_id', (initialData as any).connecting_departure_id ? String((initialData as any).connecting_departure_id) : '');
             form.setData('minimum_connecting_time', (initialData as any).minimum_connecting_time || '');

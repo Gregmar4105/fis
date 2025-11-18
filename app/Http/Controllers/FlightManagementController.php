@@ -80,8 +80,8 @@ class FlightManagementController extends Controller
             });
         }
 
-        // Filter by status
-        if ($request->has('status') && $request->status) {
+        // Filter by status - ensure all flights with the selected status are shown
+        if ($request->has('status') && $request->status && $request->status !== 'all') {
             $query->where('fk_id_status_code', $request->status);
         }
 
