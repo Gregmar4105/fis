@@ -2,17 +2,21 @@ import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import { connections } from '@/routes/flights';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
     PlaneTakeoff, 
     PlaneLanding, 
     Clock, 
     AlertCircle,
-    TrendingUp,
-    Users,
+    Route as RouteIcon,
+    XCircle as XCircleIcon,
     AlertTriangle,
     Info,
-    XCircle
+    XCircle,
+    LayoutDashboard,
+    Calendar,
+    MapPin
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -24,6 +28,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { schedule } from '@/routes/flights';
+import { format } from 'date-fns';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -37,24 +44,52 @@ interface DashboardStats {
     arrivals: number;
     departures: number;
     delayed: number;
-    onTime: number;
-    boarding: number;
+    cancelled: number;
+    connections: number;
 }
 
 interface DashboardFlight {
     id: number;
     flight_number: string;
     airline: string;
+    airline_code?: string;
     origin: string;
     destination: string;
     scheduled_departure: string;
-    scheduled_arrival: string;
+    scheduled_arrival: string | null;
     status: string;
     status_code: string;
     gate: string | null;
     terminal: string | null;
     baggage_belt: string | null;
+    aircraft?: {
+        icao_code: string;
+        manufacturer?: string;
+        model_name?: string;
+    } | null;
 }
+
+// Format time with timezone conversion
+const formatTime = (dateString: string | null): string => {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return format(date, 'HH:mm');
+    } catch {
+        return 'N/A';
+    }
+};
+
+// Format date with timezone conversion
+const formatDate = (dateString: string | null): string => {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return format(date, 'MMM dd, yyyy');
+    } catch {
+        return 'N/A';
+    }
+};
 
 interface SystemAlert {
     type: string;
@@ -78,19 +113,19 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
         arrivals: 0,
         departures: 0,
         delayed: 0,
-        onTime: 0,
-        boarding: 0,
+        cancelled: 0,
+        connections: 0,
     };
 
     const getStatusBadgeColor = (statusCode: string) => {
         switch (statusCode) {
-            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400';
-            case 'BRD': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400';
-            case 'DLY': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 dark:bg-yellow-500/20 dark:text-yellow-400';
-            case 'DEP': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400';
-            case 'ARR': return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400';
-            case 'CNX': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400';
-            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400';
+            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
+            case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
+            case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
+            case 'DEP': return 'bg-green-600/20 text-green-600 border-green-600/30 dark:bg-green-600/20 dark:text-green-500 dark:border-green-600/30';
+            case 'ARR': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30';
+            case 'CNX': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30';
         }
     };
 
@@ -139,50 +174,18 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                 {/* Stats Grid */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {/* Total Flights */}
-                    <Card className="hover:shadow-lg transition-shadow">
+                    <Card className="hover:shadow-lg transition-shadow border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Active Flights</CardTitle>
-                            <Clock className="h-5 w-5 text-muted-foreground" />
+                            <CardTitle className="text-sm font-medium">Total Flights</CardTitle>
+                            <LayoutDashboard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">{dashboardStats.totalFlights}</div>
+                            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{dashboardStats.totalFlights}</div>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Currently being tracked
                             </p>
                         </CardContent>
                     </Card>
-
-                    {/* Arrivals */}
-                    <Link href="/schedule/arrivals">
-                        <Card className="hover:shadow-lg transition-shadow hover:border-blue-500 dark:hover:border-blue-400 cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Arrivals</CardTitle>
-                                <PlaneLanding className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{dashboardStats.arrivals}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Expected incoming flights
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </Link>
-
-                    {/* Departures */}
-                    <Link href="/schedule/departures">
-                        <Card className="hover:shadow-lg transition-shadow hover:border-green-500 dark:hover:border-green-400 cursor-pointer">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Departures</CardTitle>
-                                <PlaneTakeoff className="h-5 w-5 text-green-600 dark:text-green-400" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-green-600 dark:text-green-400">{dashboardStats.departures}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Scheduled outgoing flights
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </Link>
 
                     {/* Delayed Flights */}
                     <Card className="hover:shadow-lg transition-shadow border-yellow-200 dark:border-yellow-800">
@@ -198,95 +201,190 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                         </CardContent>
                     </Card>
 
-                    {/* On-Time Performance */}
-                    <Card className="hover:shadow-lg transition-shadow border-green-200 dark:border-green-800">
+                    {/* Cancelled Flights */}
+                    <Card className="hover:shadow-lg transition-shadow border-red-200 dark:border-red-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">On-Time</CardTitle>
-                            <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
+                            <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{dashboardStats.onTime}</div>
+                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">{dashboardStats.cancelled}</div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Operating as scheduled
+                                Flights that have been cancelled
                             </p>
                         </CardContent>
                     </Card>
 
-                    {/* Boarding */}
-                    <Card className="hover:shadow-lg transition-shadow border-purple-200 dark:border-purple-800">
+                    {/* Arrivals */}
+                    <Card className="hover:shadow-lg transition-shadow border-green-200 dark:border-green-800 hover:border-green-500 dark:hover:border-green-400">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Boarding</CardTitle>
-                            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            <CardTitle className="text-sm font-medium">Arrivals</CardTitle>
+                            <PlaneLanding className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{dashboardStats.boarding}</div>
+                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{dashboardStats.arrivals}</div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Currently boarding passengers
+                                Expected incoming flights
                             </p>
                         </CardContent>
                     </Card>
+
+                    {/* Departures */}
+                    <Card className="hover:shadow-lg transition-shadow border-purple-200 dark:border-purple-800 hover:border-purple-500 dark:hover:border-purple-400">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Departures</CardTitle>
+                            <PlaneTakeoff className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{dashboardStats.departures}</div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Scheduled outgoing flights
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Connections */}
+                    <Link href={connections.url()}>
+                        <Card className="hover:shadow-lg transition-shadow border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Connections</CardTitle>
+                                <RouteIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{dashboardStats.connections}</div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Flights with connections
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 </div>
 
-                {/* Active Flights Table */}
+                {/* Flight Schedules */}
                 {activeFlights.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Active Flights</CardTitle>
-                            <CardDescription>Next 10 flights in the system (next 24 hours)</CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                                    <div>
+                                        <CardTitle>Flight Schedules</CardTitle>
+                                        <CardDescription>Next 5 flights in the system</CardDescription>
+                                    </div>
+                                </div>
+                                <Link href={schedule.url('all')}>
+                                    <Badge variant="outline" className="cursor-pointer hover:bg-primary/80">
+                                        View All
+                                    </Badge>
+                                </Link>
+                            </div>
                         </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Flight</TableHead>
-                                        <TableHead>Airline</TableHead>
-                                        <TableHead>Route</TableHead>
-                                        <TableHead>Departure</TableHead>
-                                        <TableHead>Arrival</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Gate</TableHead>
-                                        <TableHead>Baggage</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {activeFlights.map((flight) => (
-                                        <TableRow key={flight.id}>
-                                            <TableCell className="font-medium">{flight.flight_number}</TableCell>
-                                            <TableCell>{flight.airline}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono text-sm">{flight.origin}</span>
-                                                    <span className="text-muted-foreground">→</span>
-                                                    <span className="font-mono text-sm">{flight.destination}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{flight.scheduled_departure}</TableCell>
-                                            <TableCell>{flight.scheduled_arrival || 'N/A'}</TableCell>
-                                            <TableCell>
-                                                <Badge className={getStatusBadgeColor(flight.status_code)}>
-                                                    {flight.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {flight.gate ? (
-                                                    <span className="font-mono text-sm">
-                                                        {flight.terminal && `${flight.terminal}-`}{flight.gate}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-sm">Not assigned</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {flight.baggage_belt ? (
-                                                    <span className="font-mono text-sm">{flight.baggage_belt}</span>
-                                                ) : (
-                                                    <span className="text-muted-foreground text-sm">N/A</span>
-                                                )}
-                                            </TableCell>
+                        <Separator />
+                        <CardContent className="pt-6">
+                            <div className="rounded-lg border">
+                                <Table className="table-fixed">
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                            <TableHead className="font-semibold text-center w-24">Flight #</TableHead>
+                                            <TableHead className="font-semibold text-center w-32">Route</TableHead>
+                                            <TableHead className="font-semibold text-center w-28">Airline</TableHead>
+                                            <TableHead className="font-semibold text-center w-28">Aircraft</TableHead>
+                                            <TableHead className="font-semibold text-center w-24">Terminal</TableHead>
+                                            <TableHead className="font-semibold text-center w-20">Gate</TableHead>
+                                            <TableHead className="font-semibold text-center w-20">Belt</TableHead>
+                                            <TableHead className="font-semibold text-center w-28">Departure</TableHead>
+                                            <TableHead className="font-semibold text-center w-28">Arrival</TableHead>
+                                            <TableHead className="font-semibold text-center w-24">Status</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {activeFlights.slice(0, 5).map((flight) => (
+                                            <TableRow key={flight.id} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
+                                                <TableCell className="font-bold text-primary w-24 text-center">
+                                                    {flight.flight_number}
+                                                </TableCell>
+                                                <TableCell className="text-left w-32">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="font-medium text-sm text-right flex-1 truncate">{flight.origin}</span>
+                                                            <span className="text-muted-foreground text-xs shrink-0">→</span>
+                                                            <span className="font-medium text-sm text-left flex-1 truncate">{flight.destination}</span>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="w-28 text-center">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium text-sm truncate w-full">{flight.airline || 'N/A'}</span>
+                                                        {flight.airline_code && (
+                                                            <span className="text-xs text-muted-foreground">{flight.airline_code}</span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="w-28 text-center">
+                                                    {flight.aircraft ? (
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm truncate w-full">{flight.aircraft.icao_code || 'N/A'}</span>
+                                                            {flight.aircraft.manufacturer && flight.aircraft.model_name && (
+                                                                <span className="text-xs text-muted-foreground truncate w-full">
+                                                                    {flight.aircraft.model_name.startsWith(flight.aircraft.manufacturer) 
+                                                                        ? flight.aircraft.model_name 
+                                                                        : `${flight.aircraft.manufacturer} ${flight.aircraft.model_name}`}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="w-24 text-center">
+                                                    <span className="font-medium text-sm">{flight.terminal || 'N/A'}</span>
+                                                </TableCell>
+                                                <TableCell className="text-center w-20">
+                                                    {flight.gate ? (
+                                                        <span className="font-medium text-sm">{flight.gate}</span>
+                                                    ) : (
+                                                        <span className="font-bold text-sm">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center w-20">
+                                                    {flight.baggage_belt && flight.baggage_belt !== 'UNASSIGNED' ? (
+                                                        <span className="font-medium text-sm">{flight.baggage_belt}</span>
+                                                    ) : (
+                                                        <span className="font-bold text-sm">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="w-28">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium flex items-center gap-1 text-sm">
+                                                            <Clock className="w-3 h-3 shrink-0" />
+                                                            <span className="truncate">{formatTime(flight.scheduled_departure)}</span>
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground text-center truncate w-full">
+                                                            {formatDate(flight.scheduled_departure)}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="w-28">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium flex items-center gap-1 text-sm">
+                                                            <Clock className="w-3 h-3 shrink-0" />
+                                                            <span className="truncate">{formatTime(flight.scheduled_arrival)}</span>
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground text-center truncate w-full">
+                                                            {formatDate(flight.scheduled_arrival)}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center w-24">
+                                                    <Badge className={getStatusBadgeColor(flight.status_code)}>
+                                                        {flight.status}
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 )}
@@ -295,100 +393,117 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                 <Card>
                     <CardHeader>
                         <CardTitle>Quick Actions</CardTitle>
-                        <CardDescription>Navigate to key flight management areas</CardDescription>
+                        <CardDescription>Navigate to key flight tracking areas</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-4 md:grid-cols-3">
-                        <Link href="/schedule/all">
+                    <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Link href={schedule.url('all')}>
                             <Card className="hover:bg-accent cursor-pointer transition-colors">
                                 <CardContent className="flex items-center justify-between p-4">
                                     <div>
-                                        <p className="font-medium">All Schedules</p>
+                                        <p className="font-medium">Schedules</p>
                                         <p className="text-sm text-muted-foreground">View all flights</p>
                                     </div>
-                                    <Badge>View</Badge>
+                                    <Badge className="bg-blue-500 dark:bg-blue-600 text-white">View</Badge>
                                 </CardContent>
                             </Card>
                         </Link>
-                        <Link href="/schedule/arrivals">
+                        <Link href={schedule.url('arrivals')}>
                             <Card className="hover:bg-accent cursor-pointer transition-colors">
                                 <CardContent className="flex items-center justify-between p-4">
                                     <div>
                                         <p className="font-medium">Arrivals</p>
                                         <p className="text-sm text-muted-foreground">Incoming flights</p>
                                     </div>
-                                    <Badge className="bg-blue-500 dark:bg-blue-600 text-white">View</Badge>
+                                    <Badge className="bg-green-500 dark:bg-green-600 text-white">View</Badge>
                                 </CardContent>
                             </Card>
                         </Link>
-                        <Link href="/schedule/departures">
+                        <Link href={schedule.url('departures')}>
                             <Card className="hover:bg-accent cursor-pointer transition-colors">
                                 <CardContent className="flex items-center justify-between p-4">
                                     <div>
                                         <p className="font-medium">Departures</p>
                                         <p className="text-sm text-muted-foreground">Outgoing flights</p>
                                     </div>
-                                    <Badge className="bg-green-500 dark:bg-green-600 text-white">View</Badge>
+                                    <Badge className="bg-purple-500 dark:bg-purple-600 text-white">View</Badge>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                        <Link href={connections.url()}>
+                            <Card className="hover:bg-accent cursor-pointer transition-colors">
+                                <CardContent className="flex items-center justify-between p-4">
+                                    <div>
+                                        <p className="font-medium">Connections</p>
+                                        <p className="text-sm text-muted-foreground">Connecting flights</p>
+                                    </div>
+                                    <Badge className="bg-indigo-500 dark:bg-indigo-600 text-white">View</Badge>
                                 </CardContent>
                             </Card>
                         </Link>
                     </CardContent>
                 </Card>
 
-                {/* System Info */}
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">System Integration</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">ARS (Airline Reservation)</span>
-                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">ATC (Air Traffic Control)</span>
-                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">PMS (Passenger Management)</span>
-                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">BHS (Baggage Handling)</span>
-                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Recent Activity</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-sm">
-                            {activeFlights.length === 0 ? (
-                                <p className="text-muted-foreground text-center py-4">No recent flight activity</p>
-                            ) : (
-                                activeFlights.slice(0, 3).map((flight, index) => (
-                                    <div key={flight.id} className="flex items-start gap-3">
-                                        <div className={`h-2 w-2 rounded-full mt-1.5 ${
-                                            flight.status_code === 'BRD' ? 'bg-purple-500' :
-                                            flight.status_code === 'DLY' ? 'bg-yellow-500' :
+                {/* Recent Activity */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Recent Activity</CardTitle>
+                        <CardDescription>Latest flight updates and changes</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {activeFlights.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-4">No recent flight activity</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {activeFlights.slice(0, 5).map((flight) => (
+                                    <div key={flight.id} className="flex items-start gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1.5 ${
+                                            flight.status_code === 'BRD' ? 'bg-green-500' :
+                                            flight.status_code === 'DLY' ? 'bg-orange-500' :
                                             flight.status_code === 'SCH' ? 'bg-blue-500' :
-                                            'bg-green-500'
+                                            flight.status_code === 'CNX' ? 'bg-red-500' :
+                                            flight.status_code === 'DEP' ? 'bg-green-600' :
+                                            flight.status_code === 'ARR' ? 'bg-purple-500' :
+                                            'bg-gray-500'
                                         }`} />
-                                        <div>
-                                            <p className="font-medium">{flight.flight_number} - {flight.status}</p>
-                                            <p className="text-muted-foreground text-xs">
-                                                {flight.origin} → {flight.destination} • {flight.scheduled_departure}
-                                                {flight.gate && ` • Gate ${flight.gate}`}
-                                            </p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="font-bold text-base">{flight.flight_number}</span>
+                                                <Badge className={getStatusBadgeColor(flight.status_code)} variant="outline" className="text-xs">
+                                                    {flight.status}
+                                                </Badge>
+                                                {flight.airline && (
+                                                    <span className="text-xs text-muted-foreground">• {flight.airline}</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-4 text-sm">
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                                                    <span className="font-medium">{flight.origin} → {flight.destination}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Clock className="w-4 h-4 text-muted-foreground" />
+                                                    <span>{formatTime(flight.scheduled_departure)}</span>
+                                                </div>
+                                                {flight.gate && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Gate:</span>
+                                                        <span className="font-medium">{flight.gate}</span>
+                                                    </div>
+                                                )}
+                                                {flight.terminal && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Terminal:</span>
+                                                        <span className="font-medium">{flight.terminal}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                ))
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );

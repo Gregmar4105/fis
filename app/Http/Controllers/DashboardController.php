@@ -42,13 +42,23 @@ class DashboardController extends Controller
             ->where('scheduled_departure_time', '>=', $now->startOfDay());
 
         // Calculate statistics
+        // Count flights with connections (either inbound or outbound)
+        $connectionsCount = (clone $activeFlightsQuery)
+            ->where(function ($query) {
+                $query->whereHas('inboundConnections')
+                      ->orWhereHas('outboundConnections');
+            })
+            ->count();
+
         $stats = [
             'totalFlights' => (clone $activeFlightsQuery)->count(),
             'arrivals' => (clone $activeFlightsQuery)->where('destination_code', 'MNL')->count(),
             'departures' => (clone $activeFlightsQuery)->where('origin_code', 'MNL')->count(),
             'delayed' => $delayedId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $delayedId)->count() : 0,
-            'onTime' => $scheduledId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $scheduledId)->count() : 0,
-            'boarding' => $boardingId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $boardingId)->count() : 0,
+            'cancelled' => $cancelledId ? Flight::where('fk_id_status_code', $cancelledId)
+                ->where('scheduled_departure_time', '>=', $now->startOfDay())
+                ->count() : 0,
+            'connections' => $connectionsCount,
         ];
 
         // Get active flights with full details for the dashboard
@@ -64,22 +74,28 @@ class DashboardController extends Controller
             ->whereNotIn('fk_id_status_code', array_filter([$arrivedId, $departedId, $cancelledId]))
             ->where('scheduled_departure_time', '>=', $now->startOfDay())
             ->orderBy('scheduled_departure_time', 'asc')
-            ->limit(10)
+            ->limit(5)
             ->get()
             ->map(function ($flight) {
                 return [
                     'id' => $flight->id,
                     'flight_number' => $flight->flight_number,
                     'airline' => $flight->airline?->airline_name,
+                    'airline_code' => $flight->airline?->airline_code,
                     'origin' => $flight->origin?->iata_code,
                     'destination' => $flight->destination?->iata_code,
-                    'scheduled_departure' => $flight->scheduled_departure_time->format('H:i'),
-                    'scheduled_arrival' => $flight->scheduled_arrival_time?->format('H:i'),
+                    'scheduled_departure' => $flight->scheduled_departure_time->toIso8601String(),
+                    'scheduled_arrival' => $flight->scheduled_arrival_time?->toIso8601String(),
                     'status' => $flight->status?->status_name,
                     'status_code' => $flight->status?->status_code,
                     'gate' => $flight->gate?->gate_code,
                     'terminal' => $flight->gate?->terminal?->name ?? $flight->gate?->terminal?->terminal_code,
                     'baggage_belt' => $flight->baggageBelt?->belt_code,
+                    'aircraft' => $flight->aircraft ? [
+                        'icao_code' => $flight->aircraft->icao_code,
+                        'manufacturer' => $flight->aircraft->manufacturer,
+                        'model_name' => $flight->aircraft->model_name,
+                    ] : null,
                 ];
             });
 
