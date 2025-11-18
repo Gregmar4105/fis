@@ -45,3 +45,5 @@ function something()
 {
     // ..
 }
+
+// Test bootstrap helpers handled in `Tests\TestCase::setUp()`.

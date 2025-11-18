@@ -73,6 +73,9 @@ export default function TerminalManagement({ terminals, airports, filters, stats
     const [searchTerm, setSearchTerm] = useState(filters.search ?? '');
     const [airportFilter, setAirportFilter] = useState(filters.airport ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? terminals.per_page ?? 10));
+    const [filterAirportLetter, setFilterAirportLetter] = useState<string | null>(null);
+    const [createAirportLetter, setCreateAirportLetter] = useState<string | null>(null);
+    const [editAirportLetter, setEditAirportLetter] = useState<string | null>(null);
 
     const createForm = useForm({
         iata_code: '',
@@ -218,6 +221,12 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                         id="terminal-search"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                applyFilters();
+                                            }
+                                        }}
                                         placeholder="Terminal name/code"
                                         className="pl-9"
                                     />
@@ -229,10 +238,21 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                     <SelectTrigger id="terminal-airport">
                                         <SelectValue placeholder="All airports" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-auto">
+                                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
+                                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                <button
+                                                    key={`filter-airport-letter-${ch}`}
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => setFilterAirportLetter(filterAirportLetter === ch ? null : ch)}
+                                                    className={`text-xs px-1 ${filterAirportLetter === ch ? 'underline font-semibold' : ''}`}
+                                                >{ch}</button>
+                                            ))}
+                                        </div>
                                         <SelectItem value="all">All</SelectItem>
-                                        {airports.map((airport) => (
-                                            <SelectItem key={airport.iata_code} value={airport.iata_code}>
+                                        {airports.filter((airport) => !filterAirportLetter || (airport.iata_code || '').startsWith(filterAirportLetter)).map((airport) => (
+                                            <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
                                                 {airport.iata_code} - {airport.airport_name}
                                             </SelectItem>
                                         ))}
@@ -295,7 +315,7 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                     </TableRow>
                                 ) : (
                                     terminalsList.map((terminal) => (
-                                        <TableRow key={terminal.id}>
+                                        <TableRow key={`terminal-${terminal.id}`}>
                                             <TableCell className="font-medium">
                                                 <div>{terminal.terminal_code}</div>
                                                 {terminal.name && (
@@ -405,10 +425,21 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                     <SelectTrigger id="create-airport">
                                         <SelectValue placeholder="Select airport" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-auto">
+                                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
+                                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                <button
+                                                    key={`create-airport-letter-${ch}`}
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => setCreateAirportLetter(createAirportLetter === ch ? null : ch)}
+                                                    className={`text-xs px-1 ${createAirportLetter === ch ? 'underline font-semibold' : ''}`}
+                                                >{ch}</button>
+                                            ))}
+                                        </div>
                                         <SelectItem value="none">Select airport</SelectItem>
-                                        {airports.map((airport) => (
-                                            <SelectItem key={airport.iata_code} value={airport.iata_code}>
+                                        {airports.filter((airport) => !createAirportLetter || (airport.iata_code || '').startsWith(createAirportLetter)).map((airport) => (
+                                            <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
                                                 {airport.iata_code} - {airport.airport_name}
                                             </SelectItem>
                                         ))}
@@ -478,10 +509,21 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                     <SelectTrigger id="edit-airport">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-auto">
+                                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
+                                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                <button
+                                                    key={`edit-airport-letter-${ch}`}
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => setEditAirportLetter(editAirportLetter === ch ? null : ch)}
+                                                    className={`text-xs px-1 ${editAirportLetter === ch ? 'underline font-semibold' : ''}`}
+                                                >{ch}</button>
+                                            ))}
+                                        </div>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {airports.map((airport) => (
-                                            <SelectItem key={airport.iata_code} value={airport.iata_code}>
+                                        {airports.filter((airport) => !editAirportLetter || (airport.iata_code || '').startsWith(editAirportLetter)).map((airport) => (
+                                            <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
                                                 {airport.iata_code} - {airport.airport_name}
                                             </SelectItem>
                                         ))}

@@ -148,18 +148,28 @@ class N8nFlightSyncerService implements FlightSyncer
             }
 
             // 7. RELATED RECORDS INITIALIZATION (Departure/Arrival)
-            // FlightDeparture: Use firstOrCreate to link to the new flight and set the gate ID.
-            // Actual time fields will default to NULL by the database schema, which is correct.
+            // Resolve the numeric Gate/Belt IDs from the stored gate/belt codes on the flight
+            // (the master `flights` row stores codes: fk_id_gate_code, fk_id_belt_code).
+            $resolvedGateId = null;
+            if (!empty($flight->fk_id_gate_code)) {
+                $gate = Gate::where('id_gate_code', $flight->fk_id_gate_code)->first();
+                $resolvedGateId = $gate->id ?? null;
+            }
+
             FlightDeparture::firstOrCreate(
                 ['flight_id' => $flight->id],
-                ['gate_id' => $flight->gate_id]
+                ['gate_id' => $resolvedGateId]
             );
 
-            // FlightArrival: Use firstOrCreate to link to the new flight and set the baggage claim ID.
-            // Actual time fields will default to NULL by the database schema, which is correct.
+            $resolvedBeltId = null;
+            if (!empty($flight->fk_id_belt_code)) {
+                $belt = BaggageBelt::where('id_belt_code', $flight->fk_id_belt_code)->first();
+                $resolvedBeltId = $belt->id ?? null;
+            }
+
             FlightArrival::firstOrCreate(
                 ['flight_id' => $flight->id],
-                ['baggage_claim_id' => $flight->baggage_claim_id]
+                ['baggage_belt_id' => $resolvedBeltId]
             );
 
             return $flight->load('status');

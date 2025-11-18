@@ -18,6 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import FlightModal from '@/components/flights/FlightModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -26,20 +27,20 @@ import {
     Plus,
     Pencil,
     Trash2,
-    Eye,
     Plane,
     Filter,
     Calendar,
     X
 } from 'lucide-react';
-import { Link, Head, router, useForm } from '@inertiajs/react';
-import { type BreadcrumbItem } from '@/types';
+import { Link, Head, router, usePage } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { format } from 'date-fns';
 import { useState } from 'react';
 
 interface FlightStatus {
     id: number;
     status_code: string;
+    id_status_code?: string;
     status_name: string;
 }
 
@@ -135,20 +136,42 @@ export default function FlightManagement({ flights, filters, options }: Props) {
     const [showEditDialog, setShowEditDialog] = useState(false);
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const page = usePage<SharedData>();
+    const userTimezone = (page.props as any).user_timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     
-    // Create form using Inertia useForm for better error handling and lifecycle
-    const create = useForm({
-        flight_number: '',
-        airline_code: '',
-        aircraft_icao_code: '',
-        origin_code: '',
-        destination_code: '',
-        scheduled_departure_time: '',
-        scheduled_arrival_time: '',
-        status_id: '1',
-        gate_id: '',
-        baggage_belt_id: '',
-    });
+    // Format time with timezone conversion
+    const formatTime = (dateString: string | null): string => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: userTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).format(date);
+        } catch {
+            return 'N/A';
+        }
+    };
+    
+    // Format date with timezone conversion
+    const formatDate = (dateString: string | null): string => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: userTimezone,
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).format(date);
+        } catch {
+            return 'N/A';
+        }
+    };
+    
+    // (create form removed) Using `FlightModal` for create/edit lifecycle
 
     // Airline suggestions based on flight number prefix
     const [airlineSuggestions, setAirlineSuggestions] = useState<string[]>([]);
@@ -198,13 +221,13 @@ export default function FlightManagement({ flights, filters, options }: Props) {
 
     const getStatusColor = (statusCode: string) => {
         switch (statusCode) {
-            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-            case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30';
-            case 'DEP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-            case 'ARR': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-            case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-            case 'CNL': return 'bg-red-500/20 text-red-400 border-red-500/30';
-            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
+            case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
+            case 'DEP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30';
+            case 'ARR': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30';
+            case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
+            case 'CNL': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30';
         }
     };
 
@@ -244,26 +267,36 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="search">Search</Label>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                    <Input
-                                        id="search"
-                                        placeholder="Flight #, airline, airport..."
-                                        className="pl-10"
-                                        value={searchQuery}
-                                        onChange={(e) => handleSearch(e.target.value)}
-                                    />
+                        <div className="flex items-end gap-4">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="search">Search</Label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                        <Input
+                                            id="search"
+                                            placeholder="Flight #, airline, airport..."
+                                            className="pl-10 pr-10"
+                                            value={searchQuery}
+                                            onChange={(e) => handleSearch(e.target.value)}
+                                        />
+                                        {searchQuery && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSearch('')}
+                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="status">Status</Label>
                                 <Select
                                         value={filters.status || 'all'}
-                                        onValueChange={(value) => handleFilterChange('status', value === 'all' ? undefined : value)}
+                                        onValueChange={(value) => handleFilterChange('status', (value === 'all' ? undefined : value) as any)}
                                     >
                                         <SelectTrigger id="status">
                                             <SelectValue placeholder="All Status" />
@@ -271,7 +304,7 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                         <SelectContent className="max-h-60 overflow-auto">
                                             <SelectItem value="all">All Status</SelectItem>
                                             {options.statuses.map((status) => (
-                                                <SelectItem key={status.id} value={status.id.toString()}>
+                                                <SelectItem key={`status-${status.id}`} value={(status.id_status_code ?? String(status.id)).toString()}>
                                                     {status.status_name}
                                                 </SelectItem>
                                             ))}
@@ -298,10 +331,8 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                     onChange={(e) => handleFilterChange('date_to', e.target.value)}
                                 />
                             </div>
-                        </div>
-
-                        {(filters.search || filters.status || filters.date_from || filters.date_to) && (
-                            <div className="flex items-center gap-2">
+                            </div>
+                            {(filters.search || filters.status || filters.date_from || filters.date_to) && (
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -311,9 +342,11 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                     <X className="w-4 h-4" />
                                     Clear Filters
                                 </Button>
-                                <span className="text-sm text-muted-foreground">
-                                    Showing {flights.from}-{flights.to} of {flights.total} flights
-                                </span>
+                            )}
+                        </div>
+                        {(filters.search || filters.status || filters.date_from || filters.date_to) && (
+                            <div className="text-sm text-muted-foreground">
+                                Showing {flights.from}-{flights.to} of {flights.total} flights
                             </div>
                         )}
                     </CardContent>
@@ -378,18 +411,18 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="text-sm">
-                                                        {format(new Date(flight.scheduled_departure_time), 'HH:mm')}
+                                                        {formatTime(flight.scheduled_departure_time)}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground">
-                                                        {format(new Date(flight.scheduled_departure_time), 'MMM dd, yyyy')}
+                                                        {formatDate(flight.scheduled_departure_time)}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="text-sm">
-                                                        {format(new Date(flight.scheduled_arrival_time), 'HH:mm')}
+                                                        {formatTime(flight.scheduled_arrival_time)}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground">
-                                                        {format(new Date(flight.scheduled_arrival_time), 'MMM dd, yyyy')}
+                                                        {formatDate(flight.scheduled_arrival_time)}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -418,15 +451,6 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            asChild
-                                                        >
-                                                            <Link href={`/flights/management/${flight.id}`}>
-                                                                <Eye className="w-4 h-4" />
-                                                            </Link>
-                                                        </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -529,434 +553,17 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                     </DialogContent>
                 </Dialog>
 
-                {/* Create Flight Dialog */}
-                <Dialog open={showCreateDialog} onOpenChange={(open) => {
+                {/* Reusable Flight modals: Create + Edit */}
+                <FlightModal open={showCreateDialog} onOpenChange={(open: boolean) => {
                     setShowCreateDialog(open);
+                }} options={options} initialData={{}} />
+
+                <FlightModal open={showEditDialog} onOpenChange={(open: boolean) => {
+                    setShowEditDialog(open);
                     if (!open) {
-                        // Reset form when closing
-                        create.reset();
+                        setSelectedFlight(null);
                     }
-                }}>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>Create New Flight</DialogTitle>
-                            <DialogDescription>
-                                Add a new flight to the FIS system. All fields marked with * are required.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            const submitData: any = { ...create.data };
-                            // Map front-end keys to backend expected keys
-                            if (submitData.status_id !== undefined) {
-                                submitData.fk_id_status_code = submitData.status_id;
-                                delete submitData.status_id;
-                            }
-                            if (submitData.gate_id) {
-                                submitData.fk_id_gate_code = submitData.gate_id;
-                                delete submitData.gate_id;
-                            }
-                            if (submitData.baggage_belt_id) {
-                                submitData.fk_id_belt_code = submitData.baggage_belt_id;
-                                delete submitData.baggage_belt_id;
-                            }
-
-                            // add timezone info for scheduled times so backend can convert to UTC
-                            const origin = options.airports.find(a => a.iata_code === submitData.origin_code);
-                            const destination = options.airports.find(a => a.iata_code === submitData.destination_code);
-                            if (origin && origin.timezone) submitData.departure_tz = origin.timezone;
-                            if (destination && destination.timezone) submitData.arrival_tz = destination.timezone;
-
-                            // include selected terminals (if any) for recordkeeping
-                            if (create.data.origin_terminal_id) submitData.origin_terminal_id = create.data.origin_terminal_id;
-                            if (create.data.destination_terminal_id) submitData.destination_terminal_id = create.data.destination_terminal_id;
-
-                            // compute approximate flight duration note (server will compute authoritative value)
-                            if (submitData.scheduled_departure_time && submitData.scheduled_arrival_time && submitData.departure_tz && submitData.arrival_tz) {
-                                submitData._client_note = {
-                                    computed_departure_tz: submitData.departure_tz,
-                                    computed_arrival_tz: submitData.arrival_tz,
-                                };
-                            }
-
-                            // Remove empty optional fields
-                            if (!submitData.aircraft_icao_code) delete submitData.aircraft_icao_code;
-                            if (!submitData.fk_id_gate_code) delete submitData.fk_id_gate_code;
-                            if (!submitData.fk_id_belt_code) delete submitData.fk_id_belt_code;
-
-                            // Ensure the Inertia form contains the backend field names
-                            if (submitData.fk_id_status_code !== undefined) create.setData('fk_id_status_code', submitData.fk_id_status_code);
-                            if (submitData.fk_id_gate_code !== undefined) create.setData('fk_id_gate_code', submitData.fk_id_gate_code);
-                            if (submitData.fk_id_belt_code !== undefined) create.setData('fk_id_belt_code', submitData.fk_id_belt_code);
-
-                            // Use Inertia form helper so validation errors are bound to `create.errors`.
-                            // Post the form data (form will include our fk_id_* fields set above).
-                            create.post('/flights/management', {
-                                onSuccess: () => {
-                                    setShowCreateDialog(false);
-                                },
-                                onError: (errors) => {
-                                    // keep dialog open and let errors render inline
-                                    console.warn('Validation errors', errors);
-                                }
-                            });
-                        }}>
-                            <div className="grid gap-4 py-4">
-                                {/* Flight Number */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="flight_number">Flight Number *</Label>
-                                        <Input
-                                        id="flight_number"
-                                        value={create.data.flight_number}
-                                        onChange={(e) => {
-                                            const v = e.target.value;
-                                            create.setData('flight_number', v);
-                                            // extract airline prefix (letters before numbers)
-                                            const m = v.match(/^[A-Za-z]+/);
-                                            if (m && m[0].length > 0) {
-                                                const prefix = m[0].toUpperCase();
-                                                const matches = options.airlines
-                                                    .filter(a => a.airline_code.toUpperCase().startsWith(prefix))
-                                                    .map(a => a.airline_code)
-                                                    .slice(0, 6);
-                                                setAirlineSuggestions(matches);
-                                            } else {
-                                                setAirlineSuggestions([]);
-                                            }
-                                        }}
-                                        placeholder="e.g., PR104"
-                                        required
-                                    />
-                                    {create.errors.flight_number && (
-                                        <div className="text-destructive text-sm mt-1">{create.errors.flight_number}</div>
-                                    )}
-                                    {airlineSuggestions.length > 0 && !create.data.airline_code && (
-                                        <div className="flex gap-2 flex-wrap mt-2">
-                                            {airlineSuggestions.map(code => (
-                                                <button
-                                                    key={code}
-                                                    type="button"
-                                                    className="px-2 py-1 text-sm bg-muted rounded"
-                                                    onClick={() => {
-                                                        create.setData('airline_code', code);
-                                                        setAirlineSuggestions([]);
-                                                    }}
-                                                >
-                                                    {code}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Airline */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="airline_code">Airline *</Label>
-                                    <Select 
-                                        value={create.data.airline_code} 
-                                        onValueChange={(value) => create.setData('airline_code', value)}
-                                        required
-                                    >
-                                        <SelectTrigger id="airline_code">
-                                            <SelectValue placeholder="Select airline" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60 overflow-auto">
-                                            {options.airlines.map((airline) => (
-                                                <SelectItem key={airline.airline_code} value={airline.airline_code}>
-                                                    {airline.airline_code} - {airline.airline_name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {create.errors.airline_code && (
-                                        <div className="text-destructive text-sm mt-1">{create.errors.airline_code}</div>
-                                    )}
-                                </div>
-
-                                {/* Aircraft */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="aircraft_icao_code">Aircraft (Optional)</Label>
-                                    <Select 
-                                        value={create.data.aircraft_icao_code || 'none'} 
-                                        onValueChange={(value) => create.setData('aircraft_icao_code', value === 'none' ? '' : value)}
-                                    >
-                                        <SelectTrigger id="aircraft_icao_code">
-                                            <SelectValue placeholder="Select aircraft (optional)" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60 overflow-auto">
-                                            <SelectItem value="none">No Aircraft</SelectItem>
-                                            {options.aircraft.map((aircraft) => (
-                                                <SelectItem key={aircraft.icao_code} value={aircraft.icao_code}>
-                                                    {aircraft.icao_code} - {aircraft.manufacturer} {aircraft.model_name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Route */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="origin_code">Origin Airport *</Label>
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex flex-col gap-1">
-                                                {Array.from({ length: 26 }).map((_, i) => {
-                                                    const letter = String.fromCharCode(65 + i);
-                                                    return (
-                                                        <button
-                                                            key={letter}
-                                                            type="button"
-                                                            className={`w-6 h-6 text-xs rounded ${originLetter === letter ? 'bg-primary text-white' : 'bg-muted'}`}
-                                                            onClick={() => setOriginLetter(originLetter === letter ? null : letter)}
-                                                        >{letter}</button>
-                                                    );
-                                                })}
-                                            </div>
-                                            <Select 
-                                                value={create.data.origin_code} 
-                                                onValueChange={(value) => create.setData('origin_code', value)}
-                                                required
-                                            >
-                                                <SelectTrigger id="origin_code">
-                                                    <SelectValue placeholder="Select origin" />
-                                                </SelectTrigger>
-                                                <SelectContent className="max-h-60 overflow-auto">
-                                                    <div className="px-3 py-2 sticky top-0 bg-background border-b flex gap-1 flex-wrap">
-                                                        {Array.from({ length: 26 }).map((_, i) => {
-                                                            const letter = String.fromCharCode(65 + i);
-                                                            return (
-                                                                <button
-                                                                    key={letter}
-                                                                    type="button"
-                                                                    className={`w-6 h-6 text-xs rounded ${originLetter === letter ? 'bg-primary text-white' : 'bg-muted'}`}
-                                                                    onClick={() => setOriginLetter(originLetter === letter ? null : letter)}
-                                                                >{letter}</button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    {options.airports
-                                                        .filter(a => !originLetter || a.iata_code.charAt(0).toUpperCase() === originLetter)
-                                                        .map((airport) => (
-                                                            <SelectItem key={airport.iata_code} value={airport.iata_code}>
-                                                                {airport.iata_code} - {airport.city}
-                                                            </SelectItem>
-                                                        ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        {create.errors.origin_code && (
-                                            <div className="text-destructive text-sm mt-1">{create.errors.origin_code}</div>
-                                        )}
-                                        {/* Origin terminal selector (derived from gates for that airport) */}
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="origin_terminal_id">Origin Terminal (optional)</Label>
-                                            <Select value={create.data.origin_terminal_id || 'none'} onValueChange={(v) => create.setData('origin_terminal_id', v === 'none' ? '' : v)}>
-                                                <SelectTrigger id="origin_terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
-                                                <SelectContent className="max-h-60 overflow-auto">
-                                                    <SelectItem value="none">Auto-detect terminal</SelectItem>
-                                                    {Array.from(new Map(options.gates
-                                                        .filter(g => g.terminal && g.terminal.airport && g.terminal.airport.iata_code === create.data.origin_code)
-                                                        .map(g => [g.terminal.id, g.terminal])
-                                                    ).values()).map((t: any) => (
-                                                        <SelectItem key={t.id} value={String(t.id)}>{t.terminal_code} • {t.name || t.terminal_code}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="destination_code">Destination Airport *</Label>
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex flex-col gap-1">
-                                                {Array.from({ length: 26 }).map((_, i) => {
-                                                    const letter = String.fromCharCode(65 + i);
-                                                    return (
-                                                        <button
-                                                            key={letter}
-                                                            type="button"
-                                                            className={`w-6 h-6 text-xs rounded ${destinationLetter === letter ? 'bg-primary text-white' : 'bg-muted'}`}
-                                                            onClick={() => setDestinationLetter(destinationLetter === letter ? null : letter)}
-                                                        >{letter}</button>
-                                                    );
-                                                })}
-                                            </div>
-                                            <Select 
-                                                value={create.data.destination_code} 
-                                                onValueChange={(value) => create.setData('destination_code', value)}
-                                                required
-                                            >
-                                                <SelectTrigger id="destination_code">
-                                                    <SelectValue placeholder="Select destination" />
-                                                </SelectTrigger>
-                                                <SelectContent className="max-h-60 overflow-auto">
-                                                    <div className="px-3 py-2 sticky top-0 bg-background border-b flex gap-1 flex-wrap">
-                                                        {Array.from({ length: 26 }).map((_, i) => {
-                                                            const letter = String.fromCharCode(65 + i);
-                                                            return (
-                                                                <button
-                                                                    key={letter}
-                                                                    type="button"
-                                                                    className={`w-6 h-6 text-xs rounded ${destinationLetter === letter ? 'bg-primary text-white' : 'bg-muted'}`}
-                                                                    onClick={() => setDestinationLetter(destinationLetter === letter ? null : letter)}
-                                                                >{letter}</button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    {options.airports
-                                                        .filter(a => !destinationLetter || a.iata_code.charAt(0).toUpperCase() === destinationLetter)
-                                                        .map((airport) => (
-                                                            <SelectItem key={airport.iata_code} value={airport.iata_code}>
-                                                                {airport.iata_code} - {airport.city}
-                                                            </SelectItem>
-                                                        ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        {create.errors.destination_code && (
-                                            <div className="text-destructive text-sm mt-1">{create.errors.destination_code}</div>
-                                        )}
-                                        {/* Destination terminal selector (optional) */}
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="destination_terminal_id">Destination Terminal (optional)</Label>
-                                            <Select value={create.data.destination_terminal_id || 'none'} onValueChange={(v) => create.setData('destination_terminal_id', v === 'none' ? '' : v)}>
-                                                <SelectTrigger id="destination_terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
-                                                <SelectContent className="max-h-60 overflow-auto">
-                                                    <SelectItem value="none">Auto-detect terminal</SelectItem>
-                                                    {Array.from(new Map(options.gates
-                                                        .filter(g => g.terminal && g.terminal.airport && g.terminal.airport.iata_code === create.data.destination_code)
-                                                        .map(g => [g.terminal.id, g.terminal])
-                                                    ).values()).map((t: any) => (
-                                                        <SelectItem key={t.id} value={String(t.id)}>{t.terminal_code} • {t.name || t.terminal_code}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Schedule Times */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="scheduled_departure_time">Scheduled Departure *</Label>
-                                            <Input
-                                            id="scheduled_departure_time"
-                                            value={create.data.scheduled_departure_time}
-                                            onChange={(e) => create.setData('scheduled_departure_time', e.target.value)}
-                                            type="datetime-local"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="scheduled_arrival_time">Scheduled Arrival *</Label>
-                                            <Input
-                                            id="scheduled_arrival_time"
-                                            value={create.data.scheduled_arrival_time}
-                                            onChange={(e) => create.setData('scheduled_arrival_time', e.target.value)}
-                                            type="datetime-local"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Status */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="status_id">Initial Status *</Label>
-                                    <Select 
-                                        value={create.data.status_id} 
-                                        onValueChange={(value) => create.setData('status_id', value)}
-                                    >
-                                        <SelectTrigger id="status_id">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60 overflow-auto">
-                                            {options.statuses.map((status) => (
-                                                <SelectItem key={status.id} value={status.id.toString()}>
-                                                    {status.status_name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {(create.errors.fk_id_status_code || create.errors.status_id) && (
-                                        <div className="text-destructive text-sm mt-1">{create.errors.fk_id_status_code || create.errors.status_id}</div>
-                                    )}
-                                </div>
-
-                                {/* Optional: Gate */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="gate_id">Gate (Optional)</Label>
-                                    {create.data.origin_code && (
-                                        <div className="text-xs text-muted-foreground mb-1">Showing gates for {create.data.origin_code}</div>
-                                    )}
-                                    <Select 
-                                        value={create.data.gate_id || 'none'} 
-                                        onValueChange={(value) => create.setData('gate_id', value === 'none' ? '' : value)}
-                                    >
-                                        <SelectTrigger id="gate_id">
-                                            <SelectValue placeholder="Assign gate later" />
-                                        </SelectTrigger>
-                                            <SelectContent className="max-h-60 overflow-auto">
-                                                <SelectItem value="none">No Gate</SelectItem>
-                                                {options.gates
-                                                    .filter((gate) => {
-                                                        if (!create.data.origin_code) return true; // show all if origin not selected
-                                                        const t = (gate.terminal || {});
-                                                        const a = (t.airport || {});
-                                                        return a.iata_code === create.data.origin_code;
-                                                    })
-                                                    .map((gate) => (
-                                                        <SelectItem key={gate.id} value={gate.id.toString()}>
-                                                            {gate.terminal.terminal_code}-{gate.gate_code}
-                                                        </SelectItem>
-                                                    ))}
-                                            </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Optional: Baggage Belt */}
-                                <div className="grid gap-2">
-                                    <Label htmlFor="baggage_belt_id">Baggage Belt (Optional)</Label>
-                                    {create.data.destination_code && (
-                                        <div className="text-xs text-muted-foreground mb-1">Showing belts for {create.data.destination_code}</div>
-                                    )}
-                                    <Select 
-                                        value={create.data.baggage_belt_id || 'none'} 
-                                        onValueChange={(value) => create.setData('baggage_belt_id', value === 'none' ? '' : value)}
-                                    >
-                                        <SelectTrigger id="baggage_belt_id">
-                                            <SelectValue placeholder="Assign later" />
-                                        </SelectTrigger>
-                                            <SelectContent className="max-h-60 overflow-auto">
-                                                <SelectItem value="none">No Baggage Belt</SelectItem>
-                                                {options.baggageBelts
-                                                    .filter((belt) => {
-                                                        if (!create.data.destination_code) return true;
-                                                        const t = (belt.terminal || {});
-                                                        const a = (t.airport || {});
-                                                        return a.iata_code === create.data.destination_code;
-                                                    })
-                                                    .map((belt) => (
-                                                        <SelectItem key={belt.id} value={belt.id.toString()}>
-                                                            {belt.belt_code} ({belt.status})
-                                                        </SelectItem>
-                                                    ))}
-                                            </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <DialogFooter>
-                                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
-                                    Cancel
-                                </Button>
-                                <Button type="submit">
-                                    Create Flight
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                }} options={options} initialData={selectedFlight ?? {}} />
             </div>
         </AppLayout>
     );

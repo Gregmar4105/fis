@@ -37,6 +37,7 @@ interface CurrentFlight {
 interface Gate {
     id: number;
     gate_code: string;
+    gate_status?: string;
     terminal: Terminal;
     current_flights: CurrentFlight[];
     authorized_airlines: string[];
@@ -71,9 +72,10 @@ interface Props {
     terminals?: Terminal[];
     filters?: FiltersState;
     stats?: StatsSummary;
+    airlines?: { airline_code: string; airline_name: string }[];
 }
 
-export default function GateManagement({ gates, terminals = [], filters = {}, stats = { total: gates.total || 0, occupied: 0, available: 0 } }: Props) {
+export default function GateManagement({ gates, terminals = [], filters = {}, stats = { total: gates.total || 0, occupied: 0, available: 0 }, airlines = [] }: Props) {
     const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -89,14 +91,15 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
     const createForm = useForm({
         terminal_id: '',
         gate_code: '',
-        authorized_airlines: '',
+        airline_codes: [] as string[],
         is_occupied: false,
     });
 
     const editForm = useForm({
         terminal_id: '',
         gate_code: '',
-        authorized_airlines: '',
+        gate_status: '',
+        airline_codes: [] as string[],
         is_occupied: false,
     });
 
@@ -122,6 +125,40 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
         }
     };
 
+    const buildParams = (page?: number) => {
+        const params: any = {};
+        if (searchTerm) params.search = searchTerm;
+        if (terminalFilter) params.terminal = terminalFilter;
+        if (statusFilter) params.status = statusFilter;
+        if (perPage) params.per_page = Number(perPage);
+        if (page) params.page = page;
+        return params;
+    };
+
+    const applyFilters = (page?: number) => {
+        const params = buildParams(page);
+        router.get('/management/gates', params, { preserveState: true, replace: true, preserveScroll: true });
+    };
+
+    const resetFilters = () => {
+        setSearchTerm('');
+        setTerminalFilter('');
+        setStatusFilter('');
+        setPerPage(String(gates.per_page || 10));
+        router.get('/management/gates', {}, { preserveState: true, replace: true, preserveScroll: true });
+    };
+
+    const openEditDialog = (gate: Gate) => {
+        setSelectedGate(gate);
+        editForm.setData('gate_code', gate.gate_code);
+        editForm.setData('terminal_id', String(gate.terminal.id));
+        editForm.setData('gate_status', gate.gate_status || 'Open');
+        editForm.setData('airline_codes', gate.authorized_airlines || []);
+        setShowEditDialog(true);
+    };
+
+    const paginationLabel = gates && gates.data && gates.data.length > 0 ? `Showing ${(gates.current_page - 1) * gates.per_page + 1} to ${Math.min(gates.current_page * gates.per_page, gates.total)} of ${gates.total}` : 'No entries';
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Gate Management" />
@@ -139,7 +176,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                     </div>
                     <Button 
                         className="gap-2"
-                        onClick={() => alert('Gate creation form coming soon')}
+                        onClick={() => setShowCreateDialog(true)}
                     >
                         <Plus className="w-4 h-4" />
                         Add New Gate
@@ -162,7 +199,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                             <CardTitle className="text-sm font-medium">Occupied</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-500">
+                            <div className="text-2xl font-bold text-green-500 dark:text-green-400">
                                 {stats?.occupied ?? gatesList.filter((g: Gate) => g.is_occupied).length}
                             </div>
                         </CardContent>
@@ -172,7 +209,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                             <CardTitle className="text-sm font-medium">Available</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-500">
+                            <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">
                                 {stats?.available ?? gatesList.filter((g: Gate) => !g.is_occupied).length}
                             </div>
                         </CardContent>
@@ -189,7 +226,19 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                 <Label htmlFor="gate-search">Search</Label>
                                 <div className="relative">
                                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                    <Input id="gate-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" placeholder="Gate code or flight" />
+                                    <Input 
+                                        id="gate-search" 
+                                        value={searchTerm} 
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                applyFilters();
+                                            }
+                                        }}
+                                        className="pl-9" 
+                                        placeholder="Gate code or flight" 
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -201,7 +250,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
                                         {terminals.map((t) => (
-                                            <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
+                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -267,7 +316,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                         </TableRow>
                                     ) : (
                                         gatesList.map((gate) => (
-                                            <TableRow key={gate.id}>
+                                            <TableRow key={`gate-${gate.id}`}>
                                                 <TableCell className="font-medium">
                                                     <div className="flex items-center gap-2">
                                                         <DoorOpen className="w-4 h-4 text-muted-foreground" />
@@ -290,12 +339,12 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                                 <TableCell>
                                                     {gate.current_flights.length > 0 ? (
                                                         <div className="space-y-1">
-                                                            {gate.current_flights.map((flight, idx) => (
-                                                                <div key={idx} className="text-sm flex items-center gap-2">
+                                                                                    {gate.current_flights.map((flight, idx) => (
+                                                                                    <div key={`gate-${gate.id}-flight-${idx}`} className="text-sm flex items-center gap-2">
                                                                     <Plane className="w-3 h-3 text-muted-foreground" />
                                                                     <span className="font-medium">{flight.flight_number}</span>
                                                                 </div>
-                                                            ))}
+                                                                                ))}
                                                         </div>
                                                     ) : (
                                                         <span className="text-sm text-muted-foreground">No active flights</span>
@@ -304,11 +353,11 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                                 <TableCell>
                                                     {gate.authorized_airlines.length > 0 ? (
                                                         <div className="flex flex-wrap gap-1">
-                                                            {gate.authorized_airlines.slice(0, 2).map((airline, idx) => (
-                                                                <Badge key={idx} variant="outline" className="text-xs">
-                                                                    {airline}
-                                                                </Badge>
-                                                            ))}
+                                                                                {gate.authorized_airlines.slice(0, 2).map((airline, idx) => (
+                                                                                    <Badge key={`gate-${gate.id}-airline-${airline}-${idx}`} variant="outline" className="text-xs">
+                                                                                        {airline}
+                                                                                    </Badge>
+                                                                                ))}
                                                             {gate.authorized_airlines.length > 2 && (
                                                                 <Badge variant="outline" className="text-xs">
                                                                     +{gate.authorized_airlines.length - 2}
@@ -372,6 +421,140 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                     </div>
                                 </div>
                             )}
+                        
+                            {/* Create Gate Dialog */}
+                            <Dialog open={showCreateDialog} onOpenChange={(open) => { setShowCreateDialog(open); if (!open) createForm.reset(); }}>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Create New Gate</DialogTitle>
+                                        <DialogDescription>Add a gate and optionally authorize airlines.</DialogDescription>
+                                    </DialogHeader>
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        // Post using Inertia form helper (data already in createForm)
+                                        createForm.post('/management/gates', {
+                                            onSuccess: () => setShowCreateDialog(false),
+                                        });
+                                    }}>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="gate_code">Gate Code</Label>
+                                                <Input id="gate_code" value={createForm.data.gate_code} onChange={(e) => createForm.setData('gate_code', e.target.value)} required />
+                                                {createForm.errors.gate_code && <div className="text-destructive text-sm mt-1">{createForm.errors.gate_code}</div>}
+                                            </div>
+
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="terminal_id">Terminal</Label>
+                                                <Select value={createForm.data.terminal_id || 'none'} onValueChange={(v) => createForm.setData('terminal_id', v === 'none' ? '' : v)} required>
+                                                    <SelectTrigger id="terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">Select terminal</SelectItem>
+                                                        {terminals.map(t => (
+                                                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
+                                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {createForm.errors.terminal_id && <div className="text-destructive text-sm mt-1">{createForm.errors.terminal_id}</div>}
+                                            </div>
+
+                                            <div className="grid gap-2">
+                                                <Label>Authorize Airlines (optional)</Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    { (airlines || []).map((a: any) => {
+                                                        const codes = [...(createForm.data.airline_codes as string[])];
+                                                        const selected = codes.includes(a.airline_code);
+                                                        return (
+                                                                    <button type="button" key={`airline-${a.airline_code}`} className={`px-2 py-1 rounded ${selected ? 'bg-primary text-white' : 'bg-muted'}`} onClick={() => {
+                                                                const next = [...codes];
+                                                                const idx = next.indexOf(a.airline_code);
+                                                                if (idx === -1) next.push(a.airline_code); else next.splice(idx, 1);
+                                                                createForm.setData('airline_codes', next);
+                                                            }}>{a.airline_code}</button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+                                            <Button type="submit">Create Gate</Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                                {/* Edit Gate Dialog */}
+                                <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) editForm.reset(); }}>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Edit Gate</DialogTitle>
+                                            <DialogDescription>Edit gate details and authorized airlines.</DialogDescription>
+                                        </DialogHeader>
+                                        <form onSubmit={(e) => {
+                                            e.preventDefault();
+                                            if (!selectedGate) return;
+                                            editForm.put(`/management/gates/${selectedGate.id}`, {
+                                                onSuccess: () => setShowEditDialog(false),
+                                            });
+                                        }}>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="edit_gate_code">Gate Code</Label>
+                                                    <Input id="edit_gate_code" value={editForm.data.gate_code} onChange={(e) => editForm.setData('gate_code', e.target.value)} required />
+                                                    {editForm.errors.gate_code && <div className="text-destructive text-sm mt-1">{editForm.errors.gate_code}</div>}
+                                                </div>
+
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="edit_terminal_id">Terminal</Label>
+                                                    <Select value={editForm.data.terminal_id || 'none'} onValueChange={(v) => editForm.setData('terminal_id', v === 'none' ? '' : v)} required>
+                                                        <SelectTrigger id="edit_terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">Select terminal</SelectItem>
+                                                            {terminals.map(t => (
+                                                                <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {editForm.errors.terminal_id && <div className="text-destructive text-sm mt-1">{editForm.errors.terminal_id}</div>}
+                                                </div>
+
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="edit_gate_status">Gate Status</Label>
+                                                    <Select value={editForm.data.gate_status || 'Open'} onValueChange={(v) => editForm.setData('gate_status', v)}>
+                                                        <SelectTrigger id="edit_gate_status"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Open">Open</SelectItem>
+                                                            <SelectItem value="Closed">Closed</SelectItem>
+                                                            <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {editForm.errors.gate_status && <div className="text-destructive text-sm mt-1">{editForm.errors.gate_status}</div>}
+                                                </div>
+
+                                                <div className="grid gap-2">
+                                                    <Label>Authorize Airlines (optional)</Label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        { (airlines || []).map((a: any) => {
+                                                            const codes = [...(editForm.data.airline_codes as string[])];
+                                                            const selected = codes.includes(a.airline_code);
+                                                            return (
+                                                                <button type="button" key={a.airline_code} className={`px-2 py-1 rounded ${selected ? 'bg-primary text-white' : 'bg-muted'}`} onClick={() => {
+                                                                    const next = [...codes];
+                                                                    const idx = next.indexOf(a.airline_code);
+                                                                    if (idx === -1) next.push(a.airline_code); else next.splice(idx, 1);
+                                                                    editForm.setData('airline_codes', next);
+                                                                }}>{a.airline_code}</button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+                                                <Button type="submit">Save Changes</Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
                         </div>
                     </CardContent>
                 </Card>
@@ -411,7 +594,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                     <SelectTrigger id="create-terminal"><SelectValue placeholder="Select terminal" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">Select terminal</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -440,7 +623,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                     <SelectTrigger id="edit-terminal"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

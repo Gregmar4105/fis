@@ -49,8 +49,8 @@ class TerminalManagementController extends Controller
             ],
             'stats' => [
                 'total' => Terminal::count(),
-                'with_gates' => Terminal::has('gates')->count(),
-                'with_belts' => Terminal::has('baggageBelts')->count(),
+                'with_gates' => Terminal::whereHas('gates')->count(),
+                'with_belts' => Terminal::whereHas('baggageBelts')->count(),
             ],
         ]);
     }

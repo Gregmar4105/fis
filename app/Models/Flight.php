@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations;
 
 /**
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations;
 class Flight extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     // Use $guarded = [] or define $fillable based on your security policy.
     // For simplicity, we use $guarded.
@@ -43,6 +45,16 @@ class Flight extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         // Eloquent automatically handles bigint for the ID fields
+    ];
+
+    /**
+     * The attributes that should be mutated to dates.
+     * (SoftDeletes will automatically cast `deleted_at`.)
+     *
+     * @var array
+     */
+    protected $dates = [
+        'deleted_at',
     ];
 
     // --- CORE LOOKUP RELATIONSHIPS ---
@@ -187,7 +199,17 @@ class Flight extends Model
     // --- CONVENIENCE RELATIONSHIPS (for efficient querying) ---
 
     /**
+     * Get the terminal directly assigned to the flight (via fk_id_terminal_code).
+     * This is the primary terminal relationship.
+     */
+    public function terminalDirect(): Relations\BelongsTo
+    {
+        return $this->belongsTo(Terminal::class, 'fk_id_terminal_code', 'id_terminal_code');
+    }
+
+    /**
      * Gets the Terminal model through the Gate model (N+1 fix for FIDS).
+     * Falls back to gate's terminal if direct terminal is not set.
      *
      * Relationship path: Flight -> Gate -> Terminal
      * - Flight.gate_id links to Gate.id

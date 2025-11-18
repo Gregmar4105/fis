@@ -10,8 +10,9 @@ use Illuminate\Foundation\Testing\TestCase; // Ensure TestCase methods are avail
 
 // Use a test function wrapper for the Pest structure
 it('POST /api/v1/admin/flights/{flight}/time updates time with auth and middleware', function () {
-    // Minimal schema just for this HTTP test
-    Schema::create('flights', function ($table) {
+    // Minimal schema just for this HTTP test (only create if missing)
+    if (! Schema::hasTable('flights')) {
+        Schema::create('flights', function ($table) {
         $table->id(); // Using id() for PK (long form for clarity, matches bigint)
         $table->string('flight_number')->nullable();
         $table->string('airline_code')->nullable();
@@ -20,8 +21,11 @@ it('POST /api/v1/admin/flights/{flight}/time updates time with auth and middlewa
         $table->timestamp('scheduled_departure_time')->nullable();
         $table->timestamp('scheduled_arrival_time')->nullable();
         $table->timestamps();
-    });
-    Schema::create('flight_events', function ($table) {
+        });
+    }
+
+    if (! Schema::hasTable('flight_events')) {
+        Schema::create('flight_events', function ($table) {
         $table->increments('id');
         $table->foreignId('flight_id')->constrained('flights'); // Use foreignId to link properly
         $table->string('event_type');
@@ -30,14 +34,18 @@ it('POST /api/v1/admin/flights/{flight}/time updates time with auth and middlewa
         $table->string('old_value')->nullable();
         $table->string('new_value')->nullable();
         $table->timestamps();
-    });
-    // Create users/permissions for auth checks
-    Schema::create('users', function ($table) {
-        $table->id();
-        $table->string('name');
-        $table->string('email')->unique();
-        $table->string('password');
-    });
+        });
+    }
+
+    // Create users/permissions for auth checks if missing
+    if (! Schema::hasTable('users')) {
+        Schema::create('users', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+        });
+    }
 
     Flight::unguard();
     // Create the flight using the actual model for consistency
@@ -55,6 +63,7 @@ it('POST /api/v1/admin/flights/{flight}/time updates time with auth and middlewa
         public function updateStatus(array $payload): Flight { return new Flight(); }
         public function updateGate(Flight $flight, \App\Models\Gate $newGate): bool { return true; }
         public function updateBaggageClaim(Flight $flight, \App\Models\BaggageClaim $newClaim): bool { return true; }
+        public function updateBaggageBelt(Flight $flight, \App\Models\BaggageBelt $newBelt): bool { return true; }
         public function updateTime(Flight $flight, string $timeType, Carbon $newTime): bool {
             $this->timeCalls[] = compact('flight','timeType','newTime');
             return true;

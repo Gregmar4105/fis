@@ -18,9 +18,15 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        // Provide current session timezone (if set) and a list of timezones for the UI.
+        $currentTz = $request->session()->get('user_timezone', config('app.timezone') ?? 'UTC');
+        $timezones = timezone_identifiers_list();
+
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'timezone' => $currentTz,
+            'timezones' => $timezones,
         ]);
     }
 
@@ -36,6 +42,22 @@ class ProfileController extends Controller
         }
 
         $request->user()->save();
+
+        return to_route('profile.edit');
+    }
+
+    /**
+     * Update the user's timezone preference (stored in session for now).
+     * This is intentionally session-backed to avoid adding migrations without approval.
+     */
+    public function updateTimezone(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'timezone' => ['required', 'timezone'],
+        ]);
+
+        // Store in session so UI and controllers can read it as a default.
+        $request->session()->put('user_timezone', $validated['timezone']);
 
         return to_route('profile.edit');
     }

@@ -12,6 +12,44 @@ class Terminal extends Model
 
     public $timestamps = false;
 
+    protected $fillable = [
+        'iata_code',
+        'terminal_code',
+        'name',
+    ];
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-generate id_terminal_code when creating
+        // Note: Terminal ID is NOT auto-increment, so we need it provided or generated
+        static::creating(function ($terminal) {
+            // If ID is not set, we need to get the next available ID
+            if (empty($terminal->id)) {
+                $maxId = static::max('id') ?? 0;
+                $terminal->id = $maxId + 1;
+            }
+            
+            // Generate id_terminal_code if not provided
+            if (empty($terminal->id_terminal_code) && $terminal->id && $terminal->terminal_code) {
+                $terminal->id_terminal_code = $terminal->id . '-' . $terminal->terminal_code;
+            }
+        });
+
+        // Update id_terminal_code when terminal_code or id changes
+        static::updating(function ($terminal) {
+            if ($terminal->isDirty('terminal_code') || $terminal->isDirty('id')) {
+                if ($terminal->id && $terminal->terminal_code) {
+                    $terminal->id_terminal_code = $terminal->id . '-' . $terminal->terminal_code;
+                }
+            }
+        });
+    }
+
     /**
      * Get the airport this terminal belongs to.
      */

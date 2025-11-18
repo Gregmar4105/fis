@@ -203,7 +203,7 @@ export default function StatusUpdate({ flights, options }: Props) {
                                     </TableRow>
                                 ) : (
                                     filteredFlights.map((flight) => (
-                                        <TableRow key={flight.id}>
+                                        <TableRow key={`flight-${flight.id}`}>
                                             <TableCell>
                                                 <div>
                                                     <div className="font-medium flex items-center gap-2">
@@ -235,7 +235,7 @@ export default function StatusUpdate({ flights, options }: Props) {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {options.statuses.map((status) => (
-                                                            <SelectItem key={status.id} value={status.id.toString()}>
+                                                            <SelectItem key={`status-${status.id}`} value={status.id.toString()}>
                                                                 {status.name}
                                                             </SelectItem>
                                                         ))}
@@ -256,7 +256,7 @@ export default function StatusUpdate({ flights, options }: Props) {
                                                     <SelectContent>
                                                         <SelectItem value="none">No Gate</SelectItem>
                                                         {options.gates.map((gate) => (
-                                                            <SelectItem key={gate.id} value={gate.id.toString()}>
+                                                            <SelectItem key={`gate-${gate.id}-${gate.code ?? ''}`} value={gate.id.toString()}>
                                                                 {gate.display}
                                                             </SelectItem>
                                                         ))}
@@ -277,8 +277,8 @@ export default function StatusUpdate({ flights, options }: Props) {
                                                     <SelectContent>
                                                         <SelectItem value="none">No Belt</SelectItem>
                                                         {options.baggageBelts.map((belt) => (
-                                                            <SelectItem key={belt.id} value={belt.id.toString()}>
-                                                                {belt.code} ({belt.status})
+                                                            <SelectItem key={`belt-${belt.id}-${belt.code ?? ''}`} value={belt.id.toString()}>
+                                                                {belt.code} • {belt.terminal ?? 'T?'} — #{belt.id} ({belt.status})
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>

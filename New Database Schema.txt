@@ -1,0 +1,675 @@
+Aircrafts
+"Table","Create Table"
+"aircrafts","CREATE TABLE `aircrafts` (
+  `icao_code` varchar(4) NOT NULL,
+  `model_name` varchar(100) NOT NULL,
+  `manufacturer` varchar(50) NOT NULL,
+  `capacity_pax` int DEFAULT NULL,
+  `aircraft_status` varchar(10) NOT NULL DEFAULT 'Active',
+  `wake_turbulence_category` char(1) DEFAULT NULL,
+  PRIMARY KEY (`icao_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"icao_code","varchar(4)","NO","PRI","",""
+"model_name","varchar(100)","NO","","",""
+"manufacturer","varchar(50)","NO","","",""
+"capacity_pax","int","YES","","",""
+"aircraft_status","varchar(10)","NO","","Active",""
+"wake_turbulence_category","char(1)","YES","","",""
+"icao_code","model_name","manufacturer","capacity_pax","aircraft_status","wake_turbulence_category"
+"A20N","Airbus A320neo","Airbus",180,"Active","M"
+"A21N","Airbus A321neo","Airbus",206,"Active","M"
+"A221","Airbus A220-100","Airbus",120,"Active","M"
+"A223","Airbus A220-300","Airbus",140,"Active","M"
+"A310","Airbus A310-300","Airbus",280,"Active","H"
+"A318","Airbus A318","Airbus",107,"Active","M"
+"A319","Airbus A319","Airbus",124,"Active","M"
+"A320","Airbus A320-200","Airbus",180,"Active","M"
+"A321","Airbus A321-200","Airbus",220,"Active","M"
+"A332","Airbus A330-200","Airbus",247,"Active","H"
+"A333","Airbus A330-300","Airbus",277,"Active","H"
+"A339","Airbus A330-900neo","Airbus",287,"Active","H"
+"A343","Airbus A340-300","Airbus",295,"Active","H"
+"A345","Airbus A340-500","Airbus",293,"Active","H"
+"A346","Airbus A340-600","Airbus",370,"Active","H"
+"A359","Airbus A350-900","Airbus",300,"Active","H"
+"A35K","Airbus A350-1000","Airbus",350,"Active","H"
+"A388","Airbus A380-800","Airbus",555,"Active","H"
+"AN14","Antonov An-148","Antonov",80,"Active","M"
+"AN15","Antonov An-158","Antonov",99,"Active","M"
+"AN24","Antonov An-24","Antonov",52,"Active","M"
+"AN26","Antonov An-26","Antonov",40,"Active","M"
+"AR8","BAe 146-200 / Avro RJ85","British Aerospace",100,"Active","M"
+"ARJ1","BAe 146-300 / Avro RJ100","British Aerospace",112,"Active","M"
+"AT42","ATR 42-600","ATR",50,"Active","M"
+"AT43","ATR 42-300/320","ATR",46,"Active","M"
+"AT45","ATR 42-500","ATR",50,"Active","M"
+"AT46","ATR 42-600","ATR",50,"Active","M"
+"AT72","ATR 72-200/210","ATR",74,"Active","M"
+"AT75","ATR 72-500","ATR",74,"Active","M"
+"AT76","ATR 72-600","ATR",78,"Active","M"
+"B37M","Boeing 737 MAX 7","Boeing",172,"Active","M"
+"B38M","Boeing 737 MAX 8","Boeing",178,"Active","M"
+"B39M","Boeing 737 MAX 9","Boeing",193,"Active","M"
+"B703","Boeing 707-300","Boeing",189,"Active","M"
+"B712","Boeing 717-200","Boeing",117,"Active","M"
+"B721","Boeing 727-100","Boeing",131,"Active","M"
+"B722","Boeing 727-200","Boeing",189,"Active","M"
+"B736","Boeing 737-600","Boeing",132,"Active","M"
+"B737","Boeing 737 MAX 7","Boeing",172,"Active","M"
+"B738","Boeing 737-800","Boeing",189,"Active","M"
+"B739","Boeing 737 MAX 9","Boeing",193,"Active","M"
+"B73X","Boeing 737 MAX 10","Boeing",204,"Active","M"
+"B741","Boeing 747-100","Boeing",366,"Active","H"
+"B742","Boeing 747-200","Boeing",366,"Active","H"
+"B743","Boeing 747-300","Boeing",412,"Active","H"
+"B744","Boeing 747-400","Boeing",416,"Active","H"
+"B748","Boeing 747-8 Intercontinental","Boeing",467,"Active","H"
+"B74S","Boeing 747SP","Boeing",276,"Active","H"
+"B752","Boeing 757-200","Boeing",200,"Active","M"
+
+airlines_gates 
+"Table","Create Table"
+"airline_gates","CREATE TABLE `airline_gates` (
+  `airline_code` char(2) NOT NULL,
+  `gate_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`airline_code`,`gate_id`),
+  KEY `fk_airline_gate_id_readd` (`gate_id`),
+  CONSTRAINT `airline_gates_ibfk_1` FOREIGN KEY (`airline_code`) REFERENCES `airlines` (`airline_code`),
+  CONSTRAINT `fk_airline_gate_id_readd` FOREIGN KEY (`gate_id`) REFERENCES `gates` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"airline_code","gate_id"
+"CX","13"
+"KE","34"
+"SQ","47"
+"Field","Type","Null","Key","Default","Extra"
+"airline_code","char(2)","NO","PRI","",""
+"gate_id","bigint unsigned","NO","PRI","",""
+"airline_code","gate_id"
+"CX","13"
+"KE","34"
+"SQ","47"
+
+airlines
+"Table","Create Table"
+"airlines","CREATE TABLE `airlines` (
+  `airline_code` varchar(2) NOT NULL,
+  `airline_name` varchar(100) NOT NULL,
+  `callsign` varchar(50) DEFAULT NULL,
+  `airline_status` varchar(10) NOT NULL DEFAULT 'Active',
+  `country` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`airline_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"airline_code","varchar(2)","NO","PRI","",""
+"airline_name","varchar(100)","NO","","",""
+"callsign","varchar(50)","YES","","",""
+"airline_status","varchar(10)","NO","","Active",""
+"country","varchar(50)","YES","","",""
+"airline_code","airline_name","callsign","airline_status","country"
+"2B","Albawings","ALBAWINGS","Active","Albania"
+"2G","Angara Airlines","ANGARA","Active","Russia"
+"2J","Air Busan","AIR BUSAN","Active","South Korea"
+"3B","Air Changan","CHANGAN","Active","China"
+"3P","Air Inuit","AIR INUIT","Active","Canada"
+"3R","Divi Divi Air","DIVI","Active","Curaçao"
+"3S","Air Antilles","FRENCH CARIBBEAN","Active","France"
+"4D","Air Sinai","AIR SINAI","Active","Egypt"
+"4I","Fly Gangwon","FLY GANGWON","Active","South Korea"
+"4N","Air North","AIR NORTH","Active","Canada"
+"4O","Air Montenegro","MONTENEGRO","Active","Montenegro"
+"4U","Eurowings","EUROWINGS","Active","Germany"
+"4Y","Discover Airlines","DISCOVER","Active","Germany"
+"4Z","Airlink","LINK","Active","South Africa"
+"5F","FlyOne Armenia","FLYONE ARMENIA","Active","Armenia"
+"5H","Fly540","FIVE FORTY","Active","Kenya"
+"5J","Cebu Pacific Air","CEBU","Active","Philippines"
+"5T","Canadian North","CANADIAN NORTH","Active","Canada"
+"5W","African Express Airways","KEEKU","Active","Kenya"
+"5Z","CemAir","CEM AIR","Active","South Africa"
+"6R","Alrosa","ALROSA","Active","Russia"
+"6Y","Air Arabia Maroc","AIR ARABIA MAROC","Active","Morocco"
+"7H","Alaska Seaplanes","SEAPLANES","Active","United States"
+"7P","Air Panama","AIR PANAMA","Active","Panama"
+"7Q","EcoJet","ECO-BOL","Active","Bolivia"
+"8F","Congo Airways","CONGO AIRWAYS","Active","Congo (DRC)"
+"8J","flyCAA","FLIGHT CONGO","Active","Congo (DRC)"
+"8R","Amelia","AMELIA","Active","France"
+"8U","Afriqiyah Airways","AFRIQIYAH","Active","Libya"
+"8Z","Eznis Airways","EZNIS","Active","Mongolia"
+"95","Central Mountain Air","CENTRAL MOUNTAIN","Active","Canada"
+"9H","EWA AIR","EWA","Active","France"
+"9I","Alliance Air","ALLIED","Active","India"
+"9J","Dana Airlines","DANA AIR","Active","Nigeria"
+"9K","Cape Air","CAPECOD","Active","United States"
+"9L","Cebgo","CEBGO","Active","Philippines"
+"A2","Animawings","Anima Wings","Active","Romania"
+"A7","Calafia Airlines","CALAFIA","Active","Mexico"
+"A8","Afrijet","AFRIJET","Active","Gabon"
+"A9","Aero Nomad Airlines","AERO NOMAD","Active","Kyrgyzstan"
+"AA","American Airlines","AMERICAN","Active","United States"
+"AB","Air Arabia","AIR ARABIA","Active","United Arab Emirates"
+"AC","Air Canada","AIR CANADA","Active","Canada"
+"AE","Aegean Airlines","AEGEAN","Active","Greece"
+"AF","Air France","AIRFRANS","Active","France"
+"AK","AirAsia","RED CAP","Active","Malaysia"
+"AM","Aeromexico","AEROMEXICO","Active","Mexico"
+"AQ","9 Air","JAMBO","Active","China"
+"AR","Aerolineas Argentinas","ARGENTINA","Active","Argentina"
+"AS","Alaska Airlines","ALASKA","Active","United States"
+
+airports
+"Table","Create Table"
+"airports","CREATE TABLE `airports` (
+  `iata_code` varchar(3) NOT NULL,
+  `airport_name` varchar(100) NOT NULL,
+  `city` varchar(50) NOT NULL,
+  `country` varchar(50) NOT NULL,
+  `airport_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `timezone` varchar(50) NOT NULL,
+  PRIMARY KEY (`iata_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"iata_code","varchar(3)","NO","PRI","",""
+"airport_name","varchar(100)","NO","","",""
+"city","varchar(50)","NO","","",""
+"country","varchar(50)","NO","","",""
+"airport_status","varchar(50)","NO","","",""
+"timezone","varchar(50)","NO","","",""
+"iata_code","airport_name","city","country","airport_status","timezone"
+"AAC","El Arish International Airport","El Arish","Egypt","Inactive","Africa/Cairo"
+"AAD","Adado Airport","Adado","Somalia","Active","Africa/Mogadishu"
+"AAE","Annaba Rabah Bitat Airport","Annaba","Algeria","Active","Africa/Algiers"
+"ABB","Asaba International Airport","Asaba","Nigeria","Active","Africa/Lagos"
+"ABJ","Abidjan Felix Houphouet Boigny International","Abidjan","Côte d'Ivoire","Active","Africa/Abidjan"
+"ABS","Abu Simbel Airport","Abu Simbel","Egypt","Active","Africa/Cairo"
+"ABV","Nnamdi Azikiwe International Airport","Abuja","Nigeria","Active","Africa/Lagos"
+"ACC","Accra Kotoka International Airport","Accra","Ghana","Active","Africa/Accra"
+"ADD","Addis Ababa Bole Airport","Addis Ababa","Ethiopia","Active","Africa/Addis Ababa"
+"ADE","Aden International Airport","Aden","Yemen","Active","Asia/Aden"
+"ADJ","Amman Civil Airport","Amman","Jordan","Active","Asia/Amman"
+"AGA","Al Massira Airport","Agadir","Morocco","Active","Africa/Casablanca"
+"AHU","Cherif Al Idrissi Airport","Al Hoceima","Morocco","Active","Africa/Casablanca"
+"AJN","Anjouan Ouani Airport","Anjouan","Comoros","Active","Indian/Comoro"
+"AJY","Mano Dayak International Airport","Agadez","Niger","Active","Africa/Niamey"
+"AKR","Akure Airport","Akure","Nigeria","Active","Africa/Lagos"
+"ALA","Almaty International Airport","Almaty","Kazakhstan","Active","Asia/Almaty"
+"ALG","Houari Boumediene Airport","Algiers","Algeria","Active","Africa/Algiers"
+"ALP","Aleppo International Airport","Aleppo","Syria","Active","Asia/Damascus"
+"AMH","Arba Minch Airport","Arba Minch","Ethiopia","Active","Africa/Addis Ababa"
+"AMM","Amman Queen Alia International Airport","Amman","Jordan","Active","Asia/Amman"
+"ANA","Maasai Mara Angama Airport","Maasai Mara","Kenya","Active","Africa/Nairobi"
+"APL","Nampula Airport","Nampula","Mozambique","Active","Africa/Maputo"
+"AQJ","Aqaba King Hussein International Airport","Aqaba","Jordan","Active","Asia/Amman"
+"ASB","Ashgabat International Airport","Ashgabat","Turkmenistan","Active","Asia/Ashgabat"
+"ASM","Asmara International Airport","Asmara","Eritrea","Active","Africa/Asmara"
+"ASO","Asosa Airport","Asosa","Ethiopia","Active","Africa/Addis Ababa"
+"ASV","Amboseli Airport","Amboseli","Kenya","Active","Africa/Nairobi"
+"ASW","Aswan International Airport","Aswan","Egypt","Active","Africa/Cairo"
+"ATR","Atar International Airport","Atar","Mauritania","Active","Africa/Nouakchott"
+"ATZ","Assiut Airport","Assiut","Egypt","Active","Africa/Cairo"
+"AUH","Abu Dhabi Zayed International Airport","Abu Dhabi","United Arab Emirates","Active","Asia/Dubai"
+"AWA","Awasa Airport","Awasa","Ethiopia","Active","Africa/Addis Ababa"
+"AXU","Axum Airport","Axum","Ethiopia","Active","Africa/Addis_Ababa"
+"AYT","Antalya Airport","Antalya","Turkey","Active","Europe/Istanbul"
+"AZR","Adrar Touat Cheikh Sidi Mohamed Belkebir Airport","Adrar","Algeria","Active","Africa/Algiers"
+"BAH","Bahrain International Airport","Manama","Bahrain","Active","Asia/Bahrain"
+"BBK","Kasane Airport","Kasane","Botswana","Active","Africa/Gaborone"
+"BBO","Berbera Airport","Berbera","Somalia","Active","Africa/Mogadishu"
+"BBY","Bria Airport","Bria","Central African Republic","Active","Africa/Bangui"
+"BCD","Bacolod–Silay International Airport","Bacolod","Philippines","Active","Asia/Manila"
+"BCO","Jinka Baco Airport","Jinka","Ethiopia","Active","Africa/Addis_Ababa"
+"BCU","Bauchi Airport","Bauchi","Nigeria","Active","Africa/Lagos"
+"BEM","Beni Mellal Airport","Beni Mellal","Morocco","Active","Africa/Casablanca"
+"BEN","Benghazi Benina International Airport","Benghazi","Libya","Active","Africa/Tripoli"
+"BEW","Beira Airport","Beira","Mozambique","Active","Africa/Maputo"
+"BEY","Beirut Rafic Hariri International Airport","Beirut","Lebanon","Active","Asia/Beirut"
+"BFN","Bloemfontein Airport","Bloemfontein","South Africa","Active","Africa/Johannesburg"
+"BFX","Bafoussam Airport","Bafoussam","Cameroon","Active","Africa/Douala"
+"BGF","Bangui Airport","Bangui","Central African Republic","Active","Africa/Bangui"
+
+baggage_belts
+"Table","Create Table"
+"baggage_belts","CREATE TABLE `baggage_belts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `terminal_id` int NOT NULL,
+  `status` enum('Active','Maintenance','Closed','Scheduled') NOT NULL DEFAULT 'Active',
+  `belt_code` varchar(10) NOT NULL,
+  `id_belt_code` varchar(25) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_belt_terminal` (`terminal_id`,`belt_code`),
+  UNIQUE KEY `idx_unique_id_belt_code` (`id_belt_code`),
+  CONSTRAINT `fk_belts_terminal` FOREIGN KEY (`terminal_id`) REFERENCES `terminals` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","bigint unsigned","NO","PRI","","auto_increment"
+"terminal_id","int","NO","MUL","",""
+"status","enum('Active','Maintenance','Closed','Scheduled')","NO","","Active",""
+"belt_code","varchar(10)","NO","","",""
+"id_belt_code","varchar(25)","NO","UNI","",""
+"id","terminal_id","status","belt_code","id_belt_code"
+"1",1,"Active","A3","1-A3"
+"2",1,"Active","A5","2-A5"
+"3",1,"Active","B1","3-B1"
+"4",2,"Active","C1","4-C1"
+"5",2,"Active","C2","5-C2"
+"6",1,"Active","UNASSIGNED","6-UNASSIGNED"
+"7",2,"Active","A2","7-A2"
+"8",2,"Active","A1","8-A1"
+"9",3,"Active","B2","9-B2"
+"10",3,"Active","C3","10-C3"
+"11",3,"Active","C4","11-C4"
+"12",3,"Active","C5","12-C5"
+"13",4,"Active","A1","13-A1"
+"14",4,"Active","C4","14-C4"
+"15",5,"Active","A1","15-A1"
+"16",5,"Active","B2","16-B2"
+"17",5,"Active","A3","17-A3"
+"18",6,"Active","A1","18-A1"
+"19",6,"Active","C1","19-C1"
+"20",7,"Active","A1","20-A1"
+"21",7,"Active","B2","21-B2"
+"22",8,"Active","D1","22-D1"
+"23",8,"Active","A1","23-A1"
+"24",9,"Active","A2","24-A2"
+"25",9,"Active","A3","25-A3"
+"26",10,"Active","A4","26-A4"
+"27",10,"Active","B1","27-B1"
+"28",11,"Active","B3","28-B3"
+"29",11,"Active","C4","29-C4"
+"30",12,"Active","C2","30-C2"
+"31",12,"Active","C1","31-C1"
+"32",13,"Active","A3","32-A3"
+"33",13,"Active","A5","33-A5"
+"34",14,"Active","B1","34-B1"
+"35",15,"Active","B3","35-B3"
+"36",15,"Active","C1","36-C1"
+"37",16,"Active","C3","37-C3"
+"38",16,"Active","A2","38-A2"
+"39",17,"Active","A4","39-A4"
+"40",17,"Active","A1","40-A1"
+"41",18,"Active","A1","41-A1"
+"42",18,"Active","A2","42-A2"
+"43",19,"Active","B1","43-B1"
+"44",19,"Active","B2","44-B2"
+"45",20,"Active","C1","45-C1"
+"46",20,"Active","C2","46-C2"
+"47",21,"Active","A3","47-A3"
+"48",21,"Active","A4","48-A4"
+"49",22,"Active","B3","49-B3"
+"50",22,"Active","B4","50-B4"
+
+flight_arrivals
+"Table","Create Table"
+"flight_arrivals","CREATE TABLE `flight_arrivals` (
+  `flight_id` bigint unsigned NOT NULL,
+  `actual_arrival_time` timestamp NULL DEFAULT NULL,
+  `landing_time` timestamp NULL DEFAULT NULL,
+  `baggage_belt_id_code` varchar(25) DEFAULT NULL,
+  `arrival_gate_id_code` varchar(25) DEFAULT NULL,
+  PRIMARY KEY (`flight_id`),
+  KEY `idx_arr_gate_code` (`arrival_gate_id_code`),
+  KEY `fk_arr_baggage_belt_id` (`baggage_belt_id_code`),
+  CONSTRAINT `fk_arr_arrival_gate_id_code` FOREIGN KEY (`arrival_gate_id_code`) REFERENCES `gates` (`id_gate_code`),
+  CONSTRAINT `fk_arr_baggage_belt_id` FOREIGN KEY (`baggage_belt_id_code`) REFERENCES `baggage_belts` (`id_belt_code`),
+  CONSTRAINT `flight_arrivals_ibfk_1` FOREIGN KEY (`flight_id`) REFERENCES `flights` (`id`),
+  CONSTRAINT `chk_arrival_after_landing` CHECK ((`actual_arrival_time` >= `landing_time`))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"flight_id","bigint unsigned","NO","PRI","",""
+"actual_arrival_time","timestamp","YES","","",""
+"landing_time","timestamp","YES","","",""
+"baggage_belt_id_code","varchar(25)","YES","MUL","",""
+"arrival_gate_id_code","varchar(25)","YES","MUL","",""
+"flight_id","actual_arrival_time","landing_time","baggage_belt_id_code","arrival_gate_id_code"
+"2","2025-11-10 12:55:00","2025-11-10 12:45:00","1-A3","1-A2"
+"3","2025-11-09 21:05:00","2025-11-09 20:50:00","1-A3","1-A3"
+"7","","","",""
+"8","","","",""
+"9","","","",""
+"10","","","",""
+"11","","","",""
+
+
+
+
+flight_connections
+"Table","Create Table"
+"flight_connections","CREATE TABLE `flight_connections` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `arrival_flight_id` bigint unsigned NOT NULL,
+  `departure_flight_id` bigint unsigned NOT NULL,
+  `minimum_connecting_time` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_unique_connection` (`arrival_flight_id`,`departure_flight_id`),
+  KEY `fk_connections_departure_id` (`departure_flight_id`),
+  CONSTRAINT `fk_connections_departure_id` FOREIGN KEY (`departure_flight_id`) REFERENCES `flights` (`id`),
+  CONSTRAINT `flight_connections_ibfk_1` FOREIGN KEY (`arrival_flight_id`) REFERENCES `flights` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","int","NO","PRI","","auto_increment"
+"arrival_flight_id","bigint unsigned","NO","MUL","",""
+"departure_flight_id","bigint unsigned","NO","MUL","",""
+"minimum_connecting_time","int","YES","","",""
+"id","arrival_flight_id","departure_flight_id","minimum_connecting_time"
+1,"6","1",60
+
+flight_departures
+"Table","Create Table"
+"flight_departures","CREATE TABLE `flight_departures` (
+  `flight_id` bigint unsigned NOT NULL,
+  `actual_departure_time` timestamp NULL DEFAULT NULL,
+  `runway_time` timestamp NULL DEFAULT NULL,
+  `departure_gate_id_code` varchar(25) DEFAULT NULL,
+  PRIMARY KEY (`flight_id`),
+  KEY `idx_dep_gate_code` (`departure_gate_id_code`),
+  CONSTRAINT `fk_dep_departure_gate_id_code` FOREIGN KEY (`departure_gate_id_code`) REFERENCES `gates` (`id_gate_code`),
+  CONSTRAINT `flight_departures_ibfk_1` FOREIGN KEY (`flight_id`) REFERENCES `flights` (`id`),
+  CONSTRAINT `chk_runway_after_departure` CHECK (((`runway_time` is null) or (`runway_time` >= `actual_departure_time`)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"flight_id","bigint unsigned","NO","PRI","",""
+"actual_departure_time","timestamp","YES","","",""
+"runway_time","timestamp","YES","","",""
+"departure_gate_id_code","varchar(25)","YES","MUL","",""
+"flight_id","actual_departure_time","runway_time","departure_gate_id_code"
+"2","2025-11-10 11:30:00","2025-11-10 11:40:00","3-C6"
+"3","2025-11-09 17:55:00","2025-11-09 18:02:00","1-A2"
+"7","","",""
+"8","","",""
+"9","","",""
+"10","","",""
+"11","","",""
+
+
+
+flight_events
+"Table","Create Table"
+"flight_events","CREATE TABLE `flight_events` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `flight_id` bigint unsigned NOT NULL,
+  `event_type` enum('STATUS_CHANGE','TIME_UPDATE','GATE_CHANGE','CLAIM_CHANGE','AIRCRAFT_CHANGE','ROUTE_CHANGE','DIVERSION','CANCELLATION','DELAY','ARRIVAL_UPDATE','DEPARTURE_UPDATE','CHECKIN_OPEN','BOARDING_START') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `old_value` varchar(50) DEFAULT NULL,
+  `new_value` varchar(50) DEFAULT NULL,
+  `old_fk_id` int DEFAULT NULL,
+  `new_fk_id` int DEFAULT NULL,
+  `timestamp` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `flight_id` (`flight_id`),
+  CONSTRAINT `flight_events_ibfk_1` FOREIGN KEY (`flight_id`) REFERENCES `flights` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","int","NO","PRI","","auto_increment"
+"flight_id","bigint unsigned","NO","MUL","",""
+"event_type","enum('STATUS_CHANGE','TIME_UPDATE','GATE_CHANGE','CLAIM_CHANGE','AIRCRAFT_CHANGE','ROUTE_CHANGE','DIVERSION','CANCELLATION','DELAY','ARRIVAL_UPDATE','DEPARTURE_UPDATE','CHECKIN_OPEN','BOARDING_START')","NO","","",""
+"old_value","varchar(50)","YES","","",""
+"new_value","varchar(50)","YES","","",""
+"old_fk_id","int","YES","","",""
+"new_fk_id","int","YES","","",""
+"timestamp","timestamp","YES","","CURRENT_TIMESTAMP","DEFAULT_GENERATED"
+"id","flight_id","event_type","old_value","new_value","old_fk_id","new_fk_id","timestamp"
+1,"2","STATUS_CHANGE","SCH","DLY",1,4,"2025-11-09 21:21:26"
+2,"2","GATE_CHANGE","T3 C05","T3 D08",2,8,"2025-11-09 21:21:26"
+3,"2","TIME_UPDATE","2025-11-10 10:30:00","2025-11-10 11:30:00","","","2025-11-09 21:20:00"
+4,"1","STATUS_CHANGE","SCH","DEP",1,2,"2025-11-10 00:34:15"
+5,"11","STATUS_CHANGE","SCH","DEP",1,2,"2025-11-16 12:13:55"
+6,"11","STATUS_CHANGE","DEP","SCH",2,1,"2025-11-16 12:13:59"
+
+flight_status
+"Table","Create Table"
+"flight_status","CREATE TABLE `flight_status` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `status_code` varchar(15) NOT NULL,
+  `status_name` varchar(50) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `id_status_code` varchar(25) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `status_code` (`status_code`),
+  UNIQUE KEY `id_status_code` (`id_status_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","int","NO","PRI","","auto_increment"
+"status_code","varchar(15)","NO","UNI","",""
+"status_name","varchar(50)","NO","","",""
+"description","varchar(255)","YES","","",""
+"id_status_code","varchar(25)","NO","UNI","",""
+"id","status_code","status_name","description","id_status_code"
+1,"SCH","Scheduled","Original scheduled departure/arrival time.","1-SCH"
+2,"DEP","Departed","Flight is airborne (wheels up).","2-DEP"
+3,"ARR","Arrived","Aircraft is secured at the gate.","3-ARR"
+4,"DLY","Delayed","Running behind schedule.","4-DLY"
+5,"CNX","Cancelled","Flight permanently cancelled.","5-CNX"
+6,"BRD","Boarding","Passengers are boarding.","6-BRD"
+7,"GCL","Gate Closed","Boarding complete; gate closed.","7-GCL"
+8,"ENR","En Route","In-flight, routine cruise.","8-ENR"
+9,"EST","Estimated","Updated arrival time projected.","9-EST"
+10,"LND","Landing","Aircraft has touched down and is taxiing.","10-LND"
+11,"HLD","Holding","Circling airport, awaiting ATC clearance.","11-HLD"
+12,"DIV","Diverted","Flight rerouted to an alternate airport.","12-DIV"
+
+flights
+"Table","Create Table"
+"flights","CREATE TABLE `flights` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `flight_number` varchar(10) NOT NULL,
+  `airline_code` varchar(2) NOT NULL,
+  `origin_code` varchar(3) NOT NULL,
+  `destination_code` varchar(3) NOT NULL,
+  `aircraft_icao_code` varchar(4) DEFAULT NULL,
+  `scheduled_departure_time` timestamp NOT NULL,
+  `scheduled_arrival_time` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `fk_id_terminal_code` varchar(25) DEFAULT NULL,
+  `fk_id_gate_code` varchar(25) DEFAULT NULL,
+  `fk_id_belt_code` varchar(25) DEFAULT NULL,
+  `fk_id_status_code` varchar(25) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_flight_schedule` (`flight_number`,`scheduled_departure_time`),
+  KEY `idx_scheduled_departure` (`scheduled_departure_time`),
+  KEY `fk_flights_origin_code_FINAL` (`origin_code`),
+  KEY `fk_flights_destination_code_FINAL` (`destination_code`),
+  KEY `fk_flights_aircraft_icao_FINAL` (`aircraft_icao_code`),
+  KEY `fk_flights_terminal` (`fk_id_terminal_code`),
+  KEY `fk_flights_gate` (`fk_id_gate_code`),
+  KEY `fk_flights_belt` (`fk_id_belt_code`),
+  KEY `fk_flights_status` (`fk_id_status_code`),
+  KEY `fk_flights_airline_code_FINAL` (`airline_code`),
+  KEY `idx_flight_number` (`flight_number`),
+  CONSTRAINT `fk_flights_airline_code_FINAL` FOREIGN KEY (`airline_code`) REFERENCES `airlines` (`airline_code`),
+  CONSTRAINT `fk_flights_belt` FOREIGN KEY (`fk_id_belt_code`) REFERENCES `baggage_belts` (`id_belt_code`),
+  CONSTRAINT `fk_flights_gate` FOREIGN KEY (`fk_id_gate_code`) REFERENCES `gates` (`id_gate_code`),
+  CONSTRAINT `fk_flights_status` FOREIGN KEY (`fk_id_status_code`) REFERENCES `flight_status` (`id_status_code`),
+  CONSTRAINT `fk_flights_terminal` FOREIGN KEY (`fk_id_terminal_code`) REFERENCES `terminals` (`id_terminal_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","bigint unsigned","NO","PRI","","auto_increment"
+"flight_number","varchar(10)","NO","MUL","",""
+"airline_code","varchar(2)","NO","MUL","",""
+"origin_code","varchar(3)","NO","MUL","",""
+"destination_code","varchar(3)","NO","MUL","",""
+"aircraft_icao_code","varchar(4)","YES","MUL","",""
+"scheduled_departure_time","timestamp","NO","MUL","",""
+"scheduled_arrival_time","timestamp","YES","","",""
+"created_at","timestamp","YES","","CURRENT_TIMESTAMP","DEFAULT_GENERATED"
+"updated_at","timestamp","YES","","CURRENT_TIMESTAMP","DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+"fk_id_terminal_code","varchar(25)","YES","MUL","",""
+"fk_id_gate_code","varchar(25)","YES","MUL","",""
+"fk_id_belt_code","varchar(25)","YES","MUL","",""
+"fk_id_status_code","varchar(25)","YES","MUL","",""
+"id","flight_number","airline_code","origin_code","destination_code","aircraft_icao_code","scheduled_departure_time","scheduled_arrival_time","created_at","updated_at","fk_id_terminal_code","fk_id_gate_code","fk_id_belt_code","fk_id_status_code"
+"1","PR100","PR","MNL","SIN","A359","2025-11-17 20:00:53","2025-11-10 12:30:00","2025-11-09 21:08:15","2025-11-17 20:00:53","1-T3","1-A2","1-A3","2-DEP"
+"2","CX900","CX","MNL","HKG","B773","2025-11-17 20:01:41","2025-11-10 13:00:00","2025-11-09 21:08:15","2025-11-17 20:01:41","1-T3","1-A2","1-A3","2-DEP"
+"3","KE600","KE","ICN","MNL","B738","2025-11-09 17:55:00","2025-11-09 21:55:00","2025-11-09 21:08:15","2025-11-16 18:12:25","1-T3","2-2","1-A3","3-ARR"
+"4","5J557","5J","MNL","CEB","A320","2025-11-10 14:45:00","2025-11-10 16:30:00","2025-11-09 21:08:15","2025-11-16 18:12:25","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"5","UA800","UA","CEB","LAX","B773","2025-11-10 12:00:00","2025-11-11 02:00:00","2025-11-09 21:08:15","2025-11-16 18:12:25","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"6","SQ901","SQ","SIN","MNL","A359","2025-11-10 07:00:00","2025-11-10 11:15:00","2025-11-09 21:22:53","2025-11-16 18:12:25","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"7","PR102","PR","MNL","LAX","A333","2025-11-22 10:00:00","2025-11-23 18:30:00","2025-11-13 20:36:50","2025-11-17 19:11:48","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"8","PR103","PR","MNL","LAX","A333","2025-11-25 10:00:00","2025-11-26 18:30:00","2025-11-13 20:46:02","2025-11-17 19:12:08","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"9","PR400","PR","MNL","LAX","A333","2025-11-19 11:00:00","2025-11-20 19:30:00","2025-11-15 07:22:21","2025-11-17 19:12:24","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"10","PR104","PR","MNL","LAX","A333","2025-11-22 12:00:00","2025-11-23 20:30:00","2025-11-13 21:13:37","2025-11-17 19:12:45","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+"11","PR500","PR","CEB","DVO","A321","2025-11-25 15:00:00","2025-11-25 17:00:00","2025-11-14 23:16:25","2025-11-17 19:13:09","1-T3","51-UNASSIGNED","6-UNASSIGNED","1-SCH"
+
+
+
+gate_restrictions
+"Table","Create Table"
+"gate_restrictions","CREATE TABLE `gate_restrictions` (
+  `gate_id` bigint unsigned NOT NULL,
+  `aircraft_icao_code` varchar(4) NOT NULL,
+  `restriction_type` enum('CANNOT_FIT','NO_JETWAY') NOT NULL,
+  PRIMARY KEY (`gate_id`,`aircraft_icao_code`),
+  KEY `aircraft_icao_code` (`aircraft_icao_code`),
+  CONSTRAINT `fk_restrictions_gate_id_FINAL` FOREIGN KEY (`gate_id`) REFERENCES `gates` (`id`),
+  CONSTRAINT `gate_restrictions_ibfk_2` FOREIGN KEY (`aircraft_icao_code`) REFERENCES `aircrafts` (`icao_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"gate_id","bigint unsigned","NO","PRI","",""
+"aircraft_icao_code","varchar(4)","NO","PRI","",""
+"restriction_type","enum('CANNOT_FIT','NO_JETWAY')","NO","","",""
+"gate_id","aircraft_icao_code","restriction_type"
+"1","B738","NO_JETWAY"
+"4","A359","CANNOT_FIT"
+"4","B773","CANNOT_FIT"
+
+gates
+"Table","Create Table"
+"gates","CREATE TABLE `gates` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `terminal_id` int NOT NULL,
+  `gate_code` varchar(10) NOT NULL,
+  `gate_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1',
+  `id_gate_code` varchar(25) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_gate_code` (`terminal_id`,`gate_code`),
+  UNIQUE KEY `id_gate_code` (`id_gate_code`),
+  CONSTRAINT `fk_gates_terminal_id_v4` FOREIGN KEY (`terminal_id`) REFERENCES `terminals` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1991 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","bigint unsigned","NO","PRI","","auto_increment"
+"terminal_id","int","NO","MUL","",""
+"gate_code","varchar(10)","NO","","",""
+"gate_status","varchar(50)","NO","","1",""
+"id_gate_code","varchar(25)","NO","UNI","",""
+"id","terminal_id","gate_code","gate_status","id_gate_code"
+"1",1,"A1","Open","1-A1"
+"2",1,"A2","Open","1-A2"
+"3",1,"A3","Open","1-A3"
+"4",2,"B10","Open","2-B10"
+"5",2,"B11","Open","2-B11"
+"6",2,"B12","Open","2-B12"
+"7",3,"C5","Open","3-C5"
+"8",3,"C6","Open","3-C6"
+"9",3,"C7","Open","3-C7"
+"10",4,"D1","Open","4-D1"
+"11",4,"D2","Open","4-D2"
+"12",4,"D3","Open","4-D3"
+"13",5,"E15","Open","5-E15"
+"14",5,"E16","Open","5-E16"
+"15",5,"E17","Open","5-E17"
+"16",6,"F1","Open","6-F1"
+"17",6,"F2","Open","6-F2"
+"18",6,"F3","Open","6-F3"
+"19",7,"G1","Open","7-G1"
+"20",7,"G2","Open","7-G2"
+"21",7,"G3","Open","7-G3"
+"22",8,"H10","Open","8-H10"
+"23",8,"H11","Open","8-H11"
+"24",8,"H12","Open","8-H12"
+"25",9,"J1","Open","9-J1"
+"26",9,"J2","Open","9-J2"
+"27",9,"J3","Open","9-J3"
+"28",10,"K1","Open","10-K1"
+"29",10,"K2","Open","10-K2"
+"30",10,"K3","Open","10-K3"
+"31",11,"L1","Open","11-L1"
+"32",11,"L2","Open","11-L2"
+"33",11,"L3","Open","11-L3"
+"34",12,"M1","Open","12-M1"
+"35",12,"M2","Open","12-M2"
+"36",12,"M3","Open","12-M3"
+"37",13,"N1","Open","13-N1"
+"38",13,"N2","Open","13-N2"
+"39",13,"N3","Open","13-N3"
+"40",14,"P1","Open","14-P1"
+"41",14,"P2","Open","14-P2"
+"42",14,"P3","Open","14-P3"
+"43",15,"Q1","Open","15-Q1"
+"44",15,"Q2","Open","15-Q2"
+"45",15,"Q3","Open","15-Q3"
+"46",16,"R1","Open","16-R1"
+"47",16,"R2","Open","16-R2"
+"48",16,"R3","Open","16-R3"
+"49",17,"S1","Open","17-S1"
+"50",17,"S2","Open","17-S2"
+
+
+terminals
+"Table","Create Table"
+"terminals","CREATE TABLE `terminals` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `iata_code` varchar(3) NOT NULL,
+  `terminal_code` varchar(5) NOT NULL,
+  `id_terminal_code` varchar(25) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_terminal_code` (`iata_code`,`terminal_code`),
+  UNIQUE KEY `id_terminal_code` (`id_terminal_code`),
+  CONSTRAINT `fk_terminals_iata_code` FOREIGN KEY (`iata_code`) REFERENCES `airports` (`iata_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=1971 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"
+"Field","Type","Null","Key","Default","Extra"
+"id","int","NO","PRI","","auto_increment"
+"iata_code","varchar(3)","NO","MUL","",""
+"terminal_code","varchar(5)","NO","","",""
+"id_terminal_code","varchar(25)","NO","UNI","",""
+"id","iata_code","terminal_code","id_terminal_code"
+1,"MNL","T3","1-T3"
+2,"MNL","T2","2-T2"
+3,"CEB","T1","3-T1"
+4,"MNL","T1","4-T1"
+5,"MNL","T4","5-T4"
+6,"CEB","T2","6-T2"
+7,"CEB","T3","7-T3"
+8,"CEB","T4","8-T4"
+9,"AAC","T1","9-T1"
+10,"AAC","T2","10-T2"
+11,"AAC","T3","11-T3"
+12,"AAC","T4","12-T4"
+13,"AAD","T1","13-T1"
+14,"AAD","T2","14-T2"
+15,"AAD","T3","15-T3"
+16,"AAD","T4","16-T4"
+17,"AAE","T1","17-T1"
+18,"AAE","T2","18-T2"
+19,"AAE","T3","19-T3"
+20,"AAE","T4","20-T4"
+21,"ABB","T1","21-T1"
+22,"ABB","T2","22-T2"
+23,"ABB","T3","23-T3"
+24,"ABB","T4","24-T4"
+25,"ABJ","T1","25-T1"
+26,"ABJ","T2","26-T2"
+27,"ABJ","T3","27-T3"
+28,"ABJ","T4","28-T4"
+29,"ABS","T1","29-T1"
+30,"ABS","T2","30-T2"
+31,"ABS","T3","31-T3"
+32,"ABS","T4","32-T4"
+33,"ABV","T1","33-T1"
+34,"ABV","T2","34-T2"
+35,"ABV","T3","35-T3"
+36,"ABV","T4","36-T4"
+37,"ACC","T1","37-T1"
+38,"ACC","T2","38-T2"
+39,"ACC","T3","39-T3"
+40,"ACC","T4","40-T4"
+41,"ADD","T1","41-T1"
+42,"ADD","T2","42-T2"
+43,"ADD","T3","43-T3"
+44,"ADD","T4","44-T4"
+45,"ADE","T1","45-T1"
+46,"ADE","T2","46-T2"
+47,"ADE","T3","47-T3"
+48,"ADE","T4","48-T4"
+49,"ADJ","T1","49-T1"
+50,"ADJ","T2","50-T2"
+

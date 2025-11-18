@@ -7,7 +7,74 @@ import { cn } from "@/lib/utils"
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+ 
+  const { onOpenChange, ...rest } = props as any
+
+  const handleOpenChange = (open: boolean) => {
+    try {
+      const active = document.activeElement as HTMLElement | null
+      if (open) {
+        // Blur any active element outside the dialog before it opens
+        if (active && !active.closest('[data-slot="dialog-content"]')) {
+          try { active.blur && active.blur() } catch (e) {}
+        }
+
+        // Close any open popovers/selects that might retain focus
+        try {
+          const ev = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true })
+          document.dispatchEvent(ev)
+        } catch (e) {}
+
+        // Set inert on background elements to prevent focus
+        try {
+          const bodyChildren = Array.from(document.body.children) as HTMLElement[]
+          for (const child of bodyChildren) {
+            const isDialogPortal = child.getAttribute && child.getAttribute('data-slot') === 'dialog-portal'
+            const containsDialog = child.querySelector && !!child.querySelector('[data-slot="dialog-content"]')
+            if (!isDialogPortal && !containsDialog) {
+              try { (child as any).inert = true } catch (e) {}
+            }
+          }
+        } catch (e) {}
+
+        // After a short delay, ensure focus is in the dialog and not on a hidden element
+        setTimeout(() => {
+          try {
+            const dialogContent = document.querySelector('[data-slot="dialog-content"][data-state="open"]') as HTMLElement | null
+            if (dialogContent) {
+              const isHidden = dialogContent.getAttribute('aria-hidden') === 'true'
+              const hasFocus = dialogContent.contains(document.activeElement)
+              
+              // If dialog is marked as hidden but has focus, find and focus a proper element
+              if (isHidden && hasFocus) {
+                const focusable = dialogContent.querySelector<HTMLElement>(
+                  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                )
+                if (focusable) {
+                  focusable.focus()
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore errors
+          }
+        }, 100)
+      } else {
+        try {
+          const bodyChildren = Array.from(document.body.children) as HTMLElement[]
+          for (const child of bodyChildren) {
+            try { (child as any).inert = false } catch (e) {}
+          }
+        } catch (e) {}
+      }
+    } catch (e) {
+      // ignore DOM access errors in SSR or unusual environments
+    }
+
+    if (typeof onOpenChange === 'function') onOpenChange(open)
+  }
+
+  return <DialogPrimitive.Root data-slot="dialog" {...rest} onOpenChange={handleOpenChange} />
 }
 
 function DialogTrigger({

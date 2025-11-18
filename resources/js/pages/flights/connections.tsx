@@ -6,16 +6,25 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
     Search, 
-    Eye, 
+    Pencil,
+    Trash2,
     Route as RouteIcon,
     ArrowRight,
     Clock,
     MapPin,
     Plane
 } from 'lucide-react';
-import { Link, Head } from '@inertiajs/react';
-import { type BreadcrumbItem } from '@/types';
+import { Link, Head, router, usePage } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 
@@ -109,6 +118,26 @@ export default function FlightConnections({ flights, title }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredFlights, setFilteredFlights] = useState(flights.data);
     const [lastUpdate, setLastUpdate] = useState(new Date());
+    const [selectedFlight, setSelectedFlight] = useState<any>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const page = usePage<SharedData>();
+    const userTimezone = (page.props as any).user_timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    
+    // Format time with timezone conversion
+    const formatTime = (dateString: string | null): string => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: userTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).format(date);
+        } catch {
+            return 'N/A';
+        }
+    };
 
     // Live update indicator
     useEffect(() => {
@@ -144,13 +173,29 @@ export default function FlightConnections({ flights, title }: Props) {
 
     const getStatusColor = (statusCode: string) => {
         switch (statusCode) {
-            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-            case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30';
-            case 'DEP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-            case 'ARR': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-            case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-            case 'CNX': return 'bg-red-500/20 text-red-400 border-red-500/30';
-            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
+            case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
+            case 'DEP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30';
+            case 'ARR': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30';
+            case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
+            case 'CNX': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30';
+        }
+    };
+
+    const handleDelete = (flight: any) => {
+        setSelectedFlight(flight);
+        setShowDeleteDialog(true);
+    };
+
+    const confirmDelete = () => {
+        if (selectedFlight) {
+            router.delete(`/flights/management/${selectedFlight.id}`, {
+                onSuccess: () => {
+                    setShowDeleteDialog(false);
+                    setSelectedFlight(null);
+                },
+            });
         }
     };
 
@@ -280,13 +325,13 @@ export default function FlightConnections({ flights, title }: Props) {
                                                         <div className="flex items-center gap-1.5">
                                                             <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                                                             <span className="text-xs text-muted-foreground">Dep:</span>
-                                                            <span>{format(new Date(flight.scheduled_departure_time), 'HH:mm')}</span>
+                                                            <span>{formatTime(flight.scheduled_departure_time)}</span>
                                                         </div>
                                                         {flight.scheduled_arrival_time && (
                                                             <div className="flex items-center gap-1.5">
                                                                 <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                                                                 <span className="text-xs text-muted-foreground">Arr:</span>
-                                                                <span>{format(new Date(flight.scheduled_arrival_time), 'HH:mm')}</span>
+                                                                <span>{formatTime(flight.scheduled_arrival_time)}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -321,9 +366,24 @@ export default function FlightConnections({ flights, title }: Props) {
 
                                                 {/* Actions */}
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="sm">
-                                                        <Eye className="w-4 h-4" />
-                                                    </Button>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                router.visit(`/flights/management?edit=${flight.id}`);
+                                                            }}
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDelete(flight)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -354,6 +414,27 @@ export default function FlightConnections({ flights, title }: Props) {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete Flight</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to delete flight {selectedFlight?.flight_number}?
+                                This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" onClick={confirmDelete}>
+                                Delete Flight
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

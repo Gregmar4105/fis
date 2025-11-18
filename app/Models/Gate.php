@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations;
  * @property int $id
  * @property int $terminal_id
  * @property string|null $gate_code
- * @property string|null $gate_type
+ * @property string|null $gate_status
  * @property string $id_gate_code
  */
 class Gate extends Model
@@ -18,6 +18,42 @@ class Gate extends Model
     use HasFactory;
 
     public $timestamps = false;
+
+    protected $fillable = [
+        'terminal_id',
+        'gate_code',
+        'gate_status',
+    ];
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-generate id_gate_code when creating
+        // Note: Gate ID is auto-increment (bigInteger), so we don't need to set it
+        static::creating(function ($gate) {
+            // Generate id_gate_code if not provided
+            if (empty($gate->id_gate_code) && $gate->terminal_id && $gate->gate_code) {
+                $gate->id_gate_code = $gate->terminal_id . '-' . $gate->gate_code;
+            }
+            // Set default gate_status if not provided
+            if (empty($gate->gate_status)) {
+                $gate->gate_status = 'Open';
+            }
+        });
+
+        // Update id_gate_code when terminal_id or gate_code changes
+        static::updating(function ($gate) {
+            if ($gate->isDirty('terminal_id') || $gate->isDirty('gate_code')) {
+                if ($gate->terminal_id && $gate->gate_code) {
+                    $gate->id_gate_code = $gate->terminal_id . '-' . $gate->gate_code;
+                }
+            }
+        });
+    }
 
     /**
      * Get the terminal this gate belongs to.

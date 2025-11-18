@@ -31,6 +31,34 @@ class BaggageBelt extends Model
     ];
 
     /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-generate id_belt_code when creating
+        static::creating(function ($belt) {
+            if (empty($belt->id_belt_code) && $belt->terminal_id && $belt->belt_code) {
+                $belt->id_belt_code = $belt->terminal_id . '-' . $belt->belt_code;
+            }
+            // Set default status if not provided
+            if (empty($belt->status)) {
+                $belt->status = 'Active';
+            }
+        });
+
+        // Update id_belt_code when terminal_id or belt_code changes
+        static::updating(function ($belt) {
+            if ($belt->isDirty('terminal_id') || $belt->isDirty('belt_code')) {
+                if ($belt->terminal_id && $belt->belt_code) {
+                    $belt->id_belt_code = $belt->terminal_id . '-' . $belt->belt_code;
+                }
+            }
+        });
+    }
+
+    /**
      * Get the terminal this baggage belt belongs to.
      */
     public function terminal(): Relations\BelongsTo

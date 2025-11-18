@@ -2,7 +2,8 @@ import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileCo
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Transition } from '@headlessui/react';
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, usePage, router } from '@inertiajs/react';
+import { useState } from 'react';
 
 import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
@@ -10,6 +11,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
@@ -29,6 +37,8 @@ export default function Profile({
     status?: string;
 }) {
     const { auth } = usePage<SharedData>().props;
+    const { timezone, timezones } = usePage<SharedData>().props as any;
+    const [selectedTimezone, setSelectedTimezone] = useState(timezone || 'UTC');
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -135,6 +145,41 @@ export default function Profile({
                                             Saved
                                         </p>
                                     </Transition>
+                                </div>
+                                <div className="mt-6">
+                                    <HeadingSmall
+                                        title="Timezone"
+                                        description="Select your preferred timezone for displaying and creating flight times (session-backed)."
+                                    />
+
+                                    <div className="space-y-4 mt-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="timezone">Timezone</Label>
+                                            <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+                                                <SelectTrigger id="timezone" className="w-full">
+                                                    <SelectValue placeholder="Select timezone" />
+                                                </SelectTrigger>
+                                                <SelectContent className="max-h-[300px]">
+                                                    {(timezones || []).map((tz: string) => (
+                                                        <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                            <Button 
+                                                type="button"
+                                                onClick={() => {
+                                                    router.post('/settings/timezone', { timezone: selectedTimezone }, {
+                                                        preserveScroll: true,
+                                                    });
+                                                }}
+                                            >
+                                                Save
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                             </>
                         )}

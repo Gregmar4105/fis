@@ -4,7 +4,7 @@ import {
     LayoutDashboard, 
     PlaneLanding, 
     PlaneTakeoff, 
-    ListFilter,
+    Calendar,
     Route as RouteIcon,
     Edit3,
     Zap,
@@ -23,7 +23,6 @@ import {
 
 export function NavMain() {
     const { url: currentUrl } = usePage();
-    const localAirport = 'MNL';
 
     const isActive = (href: string) => {
         return currentUrl === href || currentUrl.startsWith(href + '/');
@@ -61,7 +60,7 @@ export function NavMain() {
                             tooltip="All Schedules"
                         >
                             <Link href={schedule.url('all')}>
-                                <ListFilter className="w-4 h-4" />
+                                <Calendar className="w-4 h-4" />
                                 <span>All Schedules</span>
                             </Link>
                         </SidebarMenuButton>
@@ -71,11 +70,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/schedule/arrivals')}
-                            tooltip={`Arrivals - ${localAirport}`}
+                            tooltip="Arrivals"
                         >
                             <Link href={schedule.url('arrivals')}>
                                 <PlaneLanding className="w-4 h-4" />
-                                <span>Arrivals ({localAirport})</span>
+                                <span>Arrivals</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -84,11 +83,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/schedule/departures')}
-                            tooltip={`Departures - ${localAirport}`}
+                            tooltip="Departures"
                         >
                             <Link href={schedule.url('departures')}>
                                 <PlaneTakeoff className="w-4 h-4" />
-                                <span>Departures ({localAirport})</span>
+                                <span>Departures</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

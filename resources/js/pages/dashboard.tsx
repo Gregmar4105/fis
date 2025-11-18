@@ -67,7 +67,7 @@ interface SystemAlert {
 
 interface DashboardProps {
     stats?: DashboardStats;
-    activeFlights?: ActiveFlight[];
+    activeFlights?: DashboardFlight[];
     systemAlerts?: SystemAlert[];
 }
 
@@ -84,13 +84,13 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
 
     const getStatusBadgeColor = (statusCode: string) => {
         switch (statusCode) {
-            case 'SCH': return 'bg-blue-500';
-            case 'BRD': return 'bg-purple-500';
-            case 'DLY': return 'bg-yellow-500';
-            case 'DEP': return 'bg-green-500';
-            case 'ARR': return 'bg-gray-500';
-            case 'CNX': return 'bg-red-500';
-            default: return 'bg-gray-500';
+            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400';
+            case 'BRD': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400';
+            case 'DLY': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 dark:bg-yellow-500/20 dark:text-yellow-400';
+            case 'DEP': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400';
+            case 'ARR': return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400';
+            case 'CNX': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400';
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400';
         }
     };
 
@@ -154,13 +154,13 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
 
                     {/* Arrivals */}
                     <Link href="/schedule/arrivals">
-                        <Card className="hover:shadow-lg transition-shadow hover:border-blue-500 cursor-pointer">
+                        <Card className="hover:shadow-lg transition-shadow hover:border-blue-500 dark:hover:border-blue-400 cursor-pointer">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Arrivals</CardTitle>
-                                <PlaneLanding className="h-5 w-5 text-blue-600" />
+                                <PlaneLanding className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-blue-600">{dashboardStats.arrivals}</div>
+                                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{dashboardStats.arrivals}</div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Expected incoming flights
                                 </p>
@@ -170,13 +170,13 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
 
                     {/* Departures */}
                     <Link href="/schedule/departures">
-                        <Card className="hover:shadow-lg transition-shadow hover:border-green-500 cursor-pointer">
+                        <Card className="hover:shadow-lg transition-shadow hover:border-green-500 dark:hover:border-green-400 cursor-pointer">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Departures</CardTitle>
-                                <PlaneTakeoff className="h-5 w-5 text-green-600" />
+                                <PlaneTakeoff className="h-5 w-5 text-green-600 dark:text-green-400" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-green-600">{dashboardStats.departures}</div>
+                                <div className="text-3xl font-bold text-green-600 dark:text-green-400">{dashboardStats.departures}</div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Scheduled outgoing flights
                                 </p>
@@ -185,13 +185,13 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                     </Link>
 
                     {/* Delayed Flights */}
-                    <Card className="hover:shadow-lg transition-shadow border-yellow-200 dark:border-yellow-900">
+                    <Card className="hover:shadow-lg transition-shadow border-yellow-200 dark:border-yellow-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Delayed</CardTitle>
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-yellow-600">{dashboardStats.delayed}</div>
+                            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{dashboardStats.delayed}</div>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Flights experiencing delays
                             </p>
@@ -199,13 +199,13 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                     </Card>
 
                     {/* On-Time Performance */}
-                    <Card className="hover:shadow-lg transition-shadow border-green-200 dark:border-green-900">
+                    <Card className="hover:shadow-lg transition-shadow border-green-200 dark:border-green-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">On-Time</CardTitle>
-                            <TrendingUp className="h-5 w-5 text-green-600" />
+                            <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-green-600">{dashboardStats.onTime}</div>
+                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{dashboardStats.onTime}</div>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Operating as scheduled
                             </p>
@@ -213,13 +213,13 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                     </Card>
 
                     {/* Boarding */}
-                    <Card className="hover:shadow-lg transition-shadow border-purple-200 dark:border-purple-900">
+                    <Card className="hover:shadow-lg transition-shadow border-purple-200 dark:border-purple-800">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Boarding</CardTitle>
-                            <Users className="h-5 w-5 text-purple-600" />
+                            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-purple-600">{dashboardStats.boarding}</div>
+                            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{dashboardStats.boarding}</div>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Currently boarding passengers
                             </p>
@@ -316,7 +316,7 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                                         <p className="font-medium">Arrivals</p>
                                         <p className="text-sm text-muted-foreground">Incoming flights</p>
                                     </div>
-                                    <Badge className="bg-blue-500">View</Badge>
+                                    <Badge className="bg-blue-500 dark:bg-blue-600 text-white">View</Badge>
                                 </CardContent>
                             </Card>
                         </Link>
@@ -327,7 +327,7 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                                         <p className="font-medium">Departures</p>
                                         <p className="text-sm text-muted-foreground">Outgoing flights</p>
                                     </div>
-                                    <Badge className="bg-green-500">View</Badge>
+                                    <Badge className="bg-green-500 dark:bg-green-600 text-white">View</Badge>
                                 </CardContent>
                             </Card>
                         </Link>
@@ -343,19 +343,19 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                         <CardContent className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">ARS (Airline Reservation)</span>
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Connected</Badge>
+                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">ATC (Air Traffic Control)</span>
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Connected</Badge>
+                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">PMS (Passenger Management)</span>
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Connected</Badge>
+                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">BHS (Baggage Handling)</span>
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Connected</Badge>
+                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Connected</Badge>
                             </div>
                         </CardContent>
                     </Card>

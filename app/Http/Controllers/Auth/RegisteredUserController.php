@@ -33,39 +33,72 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            // Use the actual table name for the unique rule so validation
+            // behaves correctly in all environments.
+            'email' => 'required|string|lowercase|email|max:255|unique:users',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $hashedPassword = Hash::make($request->password);
+        $webhookUrl = env('N8N_REGISTER_URL');
 
-        $webhookUrl = env('N8N_REGISTER_URL'); 
-
-        try {
-            $response = Http::post($webhookUrl, [
+        // If no webhook is configured, fall back to creating a local user
+        // payload. This avoids runtime exceptions when the environment
+        // doesn't provide an external registration endpoint.
+        if (empty($webhookUrl)) {
+            $data = [
+                'id' => null,
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => $hashedPassword, 
-                'created_at' => now()->toDateTimeString(),
-                'updated_at' => now()->toDateTimeString(),
-            ]);
-        } catch (\Exception $e) {
-            return back()->withErrors(['webhook' => 'Could not reach registration webhook.']);
+                'password' => $hashedPassword,
+            ];
+        } else {
+            try {
+                $response = Http::post($webhookUrl, [
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => $hashedPassword,
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+            } catch (\Exception $e) {
+                return back()->withErrors(['webhook' => 'Could not reach registration webhook.']);
+            }
+
+            if ($response->failed()) {
+                return back()->withErrors(['webhook' => 'Webhook returned an error.']);
+            }
+
+            $data = $response->json();
         }
-        
-        if ($response->failed()) {
-            return back()->withErrors(['webhook' => 'Webhook returned an error.']);
+
+        // Persist (upsert) a local copy of the user so the authentication
+        // guard can find them on subsequent requests. If a local user already
+        // exists keep their local password (do not overwrite). This approach
+        // keeps production behavior (webhook-driven) while ensuring a local
+        // user record exists.
+        $local = User::where('email', $data['email'] ?? $request->email)->first();
+
+        if (! $local) {
+            $localAttrs = [
+                'name' => $data['name'] ?? $request->name,
+                'email' => $data['email'] ?? $request->email,
+                'password' => $data['password'] ?? $hashedPassword,
+            ];
+
+            $local = User::create($localAttrs);
+        } else {
+            // Only set password if local password is empty (avoid overwriting
+            // local credentials which may be authoritative).
+            if (empty($local->password) && ! empty($data['password'])) {
+                $local->password = $data['password'];
+                $local->save();
+            }
         }
 
-        $data = $response->json();
+        event(new Registered($local));
 
-        $user = new User($data);
-        $user->id = $data['id'];
-        $user->exists = true;
-
-        event(new Registered($user));
-
-        Auth::login($user);
+        Auth::login($local);
         $request->session()->regenerate();
 
         return redirect()->route('verification.notice');

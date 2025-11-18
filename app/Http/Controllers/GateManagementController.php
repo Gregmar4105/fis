@@ -62,6 +62,7 @@ class GateManagementController extends Controller
             return [
                 'id' => $gate->id,
                 'gate_code' => $gate->gate_code,
+                'gate_status' => $gate->gate_status ?? 'Open',
                 'terminal' => [
                     'id' => $gate->terminal->id,
                     'code' => $gate->terminal->terminal_code,
@@ -110,12 +111,18 @@ class GateManagementController extends Controller
         $validated = $request->validate([
             'terminal_id' => 'required|exists:terminals,id',
             'gate_code' => 'required|string|max:10',
+            'gate_status' => 'nullable|string|max:50',
             'airline_codes' => 'nullable|array',
             'airline_codes.*' => 'exists:airlines,airline_code',
         ]);
 
         $airlineCodes = $validated['airline_codes'] ?? [];
         unset($validated['airline_codes']);
+
+        // Set default gate_status if not provided
+        if (empty($validated['gate_status'])) {
+            $validated['gate_status'] = 'Open';
+        }
 
         $gate = Gate::create($validated);
 
@@ -134,6 +141,7 @@ class GateManagementController extends Controller
         $validated = $request->validate([
             'gate_code' => 'sometimes|string|max:10',
             'terminal_id' => 'sometimes|exists:terminals,id',
+            'gate_status' => 'sometimes|string|max:50',
             'airline_codes' => 'sometimes|array',
             'airline_codes.*' => 'exists:airlines,airline_code',
         ]);

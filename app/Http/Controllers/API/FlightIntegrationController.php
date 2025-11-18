@@ -58,12 +58,43 @@ class FlightIntegrationController extends Controller
         Log::info('Incoming Status Payload', $request->all());
 
         try {
+            // Basic integration token check (optional but recommended)
+            $token = $request->header('X-Integration-Token');
+            $expected = env('INTEGRATION_TOKEN');
+
+            if ($expected && (!$token || !hash_equals($expected, $token))) {
+                Log::warning('Unauthorized integration request.', ['has_token' => (bool) $token]);
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            // Allow callers to provide either `flight_id` or `flight_number`.
+            $data = $request->all();
+
+            if (empty($data['flight_id']) && !empty($data['flight_number'])) {
+                // Resolve flight by flight_number to an id so the StatusUpdater can work unchanged
+                $flightModel = Flight::where('flight_number', $data['flight_number'])->first();
+                if (!$flightModel) {
+                    Log::warning('Flight not found by flight_number', ['flight_number' => $data['flight_number']]);
+                    return response()->json(['error' => 'Flight not found.'], 404);
+                }
+                $data['flight_id'] = $flightModel->id;
+            }
+
+            // Ensure we send the canonical keys expected by the service
+            $statusCode = $data['status_code'] ?? $data['new_status_code'] ?? $data['status'] ?? null;
+            if (!$statusCode || empty($data['flight_id'])) {
+                return response()->json(['error' => 'Missing flight_id and/or status_code.'], 422);
+            }
+
             // Get the specific updater product from the injected factory
             $updater = $this->factory->createStatusUpdater();
 
             // Delegate the complex update and history logging logic to the service (SRP)
             /** @var Flight $flight */
-            $flight = $updater->updateStatus($request->all());
+            $flight = $updater->updateStatus([
+                'flight_id' => $data['flight_id'],
+                'status_code' => $statusCode,
+            ]);
 
             return response()->json([
                 'message' => 'Flight status successfully updated and history logged.',

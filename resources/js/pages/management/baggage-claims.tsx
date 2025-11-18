@@ -185,7 +185,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                             <CardTitle className="text-sm font-medium">Active</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-500">
+                            <div className="text-2xl font-bold text-green-500 dark:text-green-400">
                                 {stats?.active ?? claimsList.filter((c: BaggageClaim) => c.is_active).length}
                             </div>
                         </CardContent>
@@ -211,7 +211,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                     <SelectTrigger id="claim-terminal"><SelectValue placeholder="All" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -269,7 +269,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                     </TableRow>
                                 ) : (
                                     claimsList.map((claim) => (
-                                        <TableRow key={claim.id}>
+                                        <TableRow key={`claim-${claim.id}`}>
                                             <TableCell className="font-medium">
                                                 <div className="flex items-center gap-2">
                                                     <Luggage className="w-4 h-4 text-muted-foreground" />
@@ -388,7 +388,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                     <SelectTrigger id="create-terminal"><SelectValue placeholder="Select terminal" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">Select terminal</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -417,7 +417,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                     <SelectTrigger id="edit-terminal"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

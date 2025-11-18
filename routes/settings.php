@@ -13,6 +13,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Timezone setting (session-backed; non-persistent unless migrated to DB)
+    Route::post('settings/timezone', [ProfileController::class, 'updateTimezone'])->name('settings.timezone');
+
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('password.edit');
 
     Route::put('settings/password', [PasswordController::class, 'update'])

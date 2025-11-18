@@ -124,15 +124,15 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Active':
-                return 'bg-green-500/20 text-green-400 border-green-500/30';
+                return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
             case 'Maintenance':
-                return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+                return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
             case 'Closed':
-                return 'bg-red-500/20 text-red-400 border-red-500/30';
+                return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
             case 'Scheduled':
-                return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
             default:
-                return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+                return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30';
         }
     };
 
@@ -208,7 +208,19 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                 <Label htmlFor="belt-search">Search</Label>
                                 <div className="relative">
                                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                    <Input id="belt-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" placeholder="Belt code or flight" />
+                                    <Input 
+                                        id="belt-search" 
+                                        value={searchTerm} 
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                applyFilters();
+                                            }
+                                        }}
+                                        className="pl-9" 
+                                        placeholder="Belt code or flight" 
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -217,7 +229,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                     <SelectTrigger id="belt-terminal"><SelectValue placeholder="All" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -277,7 +289,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                     </TableRow>
                                 ) : (
                                     beltsList.map((belt) => (
-                                        <TableRow key={belt.id}>
+                                        <TableRow key={`belt-${belt.id}`}>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <Luggage className="w-4 h-4 text-muted-foreground" />
@@ -303,7 +315,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                                 ) : (
                                                     <div className="flex flex-col gap-1">
                                                         {belt.current_flights.slice(0, 2).map((flight, idx) => (
-                                                            <div key={idx} className="flex items-center gap-2 text-sm">
+                                                                            <div key={`belt-${belt.id}-flight-${idx}`} className="flex items-center gap-2 text-sm">
                                                                 <Plane className="w-3 h-3 text-muted-foreground" />
                                                                 <span className="font-medium">{flight.flight_number}</span>
                                                                 <span className="text-muted-foreground">
@@ -404,7 +416,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                     <SelectTrigger id="create-terminal"><SelectValue placeholder="Select terminal" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">Select terminal</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -444,7 +456,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                     <SelectTrigger id="edit-terminal"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {terminals.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
