@@ -30,7 +30,9 @@ import {
     Plane,
     Filter,
     Calendar,
-    X
+    X,
+    Clock,
+    Route as RouteIcon
 } from 'lucide-react';
 import { Link, Head, router, usePage } from '@inertiajs/react';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -80,6 +82,12 @@ interface BaggageBelt {
     terminal: Terminal;
 }
 
+interface Terminal {
+    id: number;
+    terminal_code: string;
+    name: string;
+}
+
 interface Flight {
     id: number;
     flight_number: string;
@@ -97,6 +105,8 @@ interface Flight {
     status: FlightStatus;
     gate: Gate | null;
     baggage_belt: BaggageBelt | null;
+    terminal?: Terminal;
+    has_connections?: boolean;
 }
 
 interface PaginatedFlights {
@@ -223,8 +233,8 @@ export default function FlightManagement({ flights, filters, options }: Props) {
         switch (statusCode) {
             case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
             case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
-            case 'DEP': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30';
-            case 'ARR': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30';
+            case 'DEP': return 'bg-green-600/20 text-green-600 border-green-600/30 dark:bg-green-600/20 dark:text-green-500 dark:border-green-600/30';
+            case 'ARR': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30';
             case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
             case 'CNL': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
             default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30';
@@ -358,115 +368,168 @@ export default function FlightManagement({ flights, filters, options }: Props) {
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Flight #</TableHead>
-                                        <TableHead>Airline</TableHead>
-                                        <TableHead>Route</TableHead>
-                                        <TableHead>Aircraft</TableHead>
-                                        <TableHead>Departure</TableHead>
-                                        <TableHead>Arrival</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Gate/Claim</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                    <TableRow className="bg-muted/50">
+                                        <TableHead className="font-semibold text-center">Flight #</TableHead>
+                                        <TableHead className="font-semibold text-center">Route</TableHead>
+                                        <TableHead className="font-semibold text-center">Airline</TableHead>
+                                        <TableHead className="font-semibold text-center">Aircraft</TableHead>
+                                        <TableHead className="font-semibold text-center">Terminal</TableHead>
+                                        <TableHead className="font-semibold text-center">Gate</TableHead>
+                                        <TableHead className="font-semibold text-center">Belt</TableHead>
+                                        <TableHead className="font-semibold text-center">Departure</TableHead>
+                                        <TableHead className="font-semibold text-center">Arrival</TableHead>
+                                        <TableHead className="font-semibold text-center">Status</TableHead>
+                                        <TableHead className="font-semibold text-center">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {flights.data.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                                            <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                                                 No flights found. Try adjusting your filters or create a new flight.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         flights.data.map((flight) => (
-                                            <TableRow key={flight.id}>
-                                                <TableCell className="font-medium">
-                                                    {flight.flight_number}
+                                            <TableRow key={flight.id} className="hover:bg-muted/50 transition-colors">
+                                                <TableCell className="font-bold text-primary">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{flight.flight_number}</span>
+                                                        {flight.has_connections ? (
+                                                            <Badge variant="outline" className="gap-1 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 inline-flex items-center justify-center h-5 px-1.5">
+                                                                <RouteIcon className="w-3 h-3" />
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="gap-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 inline-flex items-center justify-center h-5 px-1.5">
+                                                                <Plane className="w-3 h-3" />
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{flight.airline.airline_name}</div>
-                                                        <div className="text-xs text-muted-foreground">{flight.airline_code}</div>
+                                                <TableCell className="text-left">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium text-sm w-12 text-right">{flight.origin?.iata_code || flight.origin_code}</span>
+                                                            <span className="text-muted-foreground text-xs w-4 text-center">→</span>
+                                                            <span className="font-medium text-sm text-left">{flight.destination?.iata_code || flight.destination_code}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-muted-foreground w-12 text-right">{flight.origin?.city || ''}</span>
+                                                            <span className="text-muted-foreground text-xs w-4 text-center">→</span>
+                                                            <span className="text-xs text-muted-foreground text-left">{flight.destination?.city || ''}</span>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                        <span className="font-medium">{flight.origin_code}</span>
-                                                        <span className="text-muted-foreground">→</span>
-                                                        <span className="font-medium">{flight.destination_code}</span>
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {flight.origin.city} to {flight.destination.city}
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium">{flight.airline?.airline_name || 'N/A'}</span>
+                                                        <span className="text-xs text-muted-foreground">{flight.airline_code}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     {flight.aircraft ? (
-                                                        <div>
-                                                            <div className="text-sm">{flight.aircraft.model_name}</div>
-                                                            <div className="text-xs text-muted-foreground">{flight.aircraft_icao_code}</div>
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm">{flight.aircraft.icao_code || flight.aircraft_icao_code || 'N/A'}</span>
+                                                            {flight.aircraft.manufacturer && flight.aircraft.model_name && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {flight.aircraft.model_name.startsWith(flight.aircraft.manufacturer) 
+                                                                        ? flight.aircraft.model_name 
+                                                                        : `${flight.aircraft.manufacturer} ${flight.aircraft.model_name}`}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground">N/A</span>
+                                                        <span className="text-muted-foreground text-sm">N/A</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="text-sm">
-                                                        {formatTime(flight.scheduled_departure_time)}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {formatDate(flight.scheduled_departure_time)}
+                                                    {flight.terminal ? (
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm">{flight.terminal.terminal_code || flight.terminal.name || 'N/A'}</span>
+                                                            {flight.terminal.name && flight.terminal.terminal_code && (
+                                                                <span className="text-xs text-muted-foreground">{flight.terminal.name}</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (flight.gate?.terminal || flight.baggage_belt?.terminal) ? (
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm">
+                                                                {(flight.gate?.terminal || flight.baggage_belt?.terminal)?.terminal_code || 'N/A'}
+                                                            </span>
+                                                            {(flight.gate?.terminal || flight.baggage_belt?.terminal)?.name && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {(flight.gate?.terminal || flight.baggage_belt?.terminal)?.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="font-bold text-sm text-center">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {flight.gate ? (
+                                                        <span className="font-medium text-sm">
+                                                            {flight.gate.gate_code || 'N/A'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="font-bold text-sm">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {flight.baggage_belt ? (
+                                                        <span className="font-medium text-sm">
+                                                            {flight.baggage_belt.belt_code || 'N/A'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="font-bold text-sm">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            {formatTime(flight.scheduled_departure_time, userTimezone)}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground text-center">
+                                                            {formatDate(flight.scheduled_departure_time, userTimezone)}
+                                                        </span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="text-sm">
-                                                        {formatTime(flight.scheduled_arrival_time)}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {formatDate(flight.scheduled_arrival_time)}
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            {formatTime(flight.scheduled_arrival_time, userTimezone)}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground text-center">
+                                                            {formatDate(flight.scheduled_arrival_time, userTimezone)}
+                                                        </span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="text-center">
                                                     <Badge className={`${getStatusColor(flight.status.status_code)} border`}>
                                                         {flight.status.status_name}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-1">
-                                                        {flight.gate && (
-                                                            <div className="text-xs flex items-center gap-1">
-                                                                <span className="text-muted-foreground">Gate:</span>
-                                                                <span className="font-medium">{flight.gate.gate_code}</span>
-                                                            </div>
-                                                        )}
-                                                        {flight.baggage_belt && (
-                                                            <div className="text-xs flex items-center gap-1">
-                                                                <span className="text-muted-foreground">Belt:</span>
-                                                                <span className="font-medium">{flight.baggage_belt.belt_code}</span>
-                                                            </div>
-                                                        )}
-                                                        {!flight.gate && !flight.baggage_belt && (
-                                                            <span className="text-xs text-muted-foreground">Not assigned</span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-1">
+                                                <TableCell className="text-center">
+                                                    <div className="flex justify-center gap-1">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                                                             onClick={() => {
                                                                 setSelectedFlight(flight);
                                                                 setShowEditDialog(true);
                                                             }}
                                                         >
-                                                            <Pencil className="w-4 h-4" />
+                                                            <Pencil className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                                                             onClick={() => handleDelete(flight)}
                                                         >
-                                                            <Trash2 className="w-4 h-4 text-destructive" />
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>

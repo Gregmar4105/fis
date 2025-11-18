@@ -88,9 +88,9 @@ class FlightScheduleController extends Controller
                 break;
         }
 
-        // 2. Global Filter: Remove Cancelled and Completed flights from the list view
+        // 2. Global Filter: Remove only Cancelled flights from the list view
+        // Note: Keep ARRIVED flights visible to match manage flights count
         $query->whereNotIn('fk_id_status_code', [
-            $arrivedStatus,
             $cancelledStatus,
         ]);
 

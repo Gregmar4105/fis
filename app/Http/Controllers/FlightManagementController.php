@@ -61,8 +61,12 @@ class FlightManagementController extends Controller
             'origin',
             'destination',
             'gate.terminal',
-            'baggageBelt',
-            'aircraft'
+            'gate.terminal.airport',
+            'baggageBelt.terminal',
+            'baggageBelt.terminal.airport',
+            'aircraft',
+            'terminalDirect',
+            'terminalDirect.airport',
         ]);
 
         // Search functionality
@@ -92,7 +96,43 @@ class FlightManagementController extends Controller
         // Order by scheduled departure time
         $query->orderBy('scheduled_departure_time', $request->get('order', 'asc'));
 
-        $flights = $query->paginate(10)->withQueryString();
+        // Get flight IDs for efficient connection checking
+        $flightIds = (clone $query)->pluck('id')->toArray();
+        
+        // Check connections in a single optimized query
+        $connectionsMap = [];
+        if (!empty($flightIds)) {
+            $connections = \DB::table('flight_connections')
+                ->where(function($q) use ($flightIds) {
+                    $q->whereIn('arrival_flight_id', $flightIds)
+                      ->orWhereIn('departure_flight_id', $flightIds);
+                })
+                ->select('arrival_flight_id', 'departure_flight_id')
+                ->get();
+            
+            foreach ($connections as $conn) {
+                if ($conn->arrival_flight_id) {
+                    $connectionsMap[$conn->arrival_flight_id] = true;
+                }
+                if ($conn->departure_flight_id) {
+                    $connectionsMap[$conn->departure_flight_id] = true;
+                }
+            }
+        }
+
+        $flights = $query->paginate(10)->through(function ($flight) use ($connectionsMap) {
+            // Connection status
+            $flight->has_connections = isset($connectionsMap[$flight->id]) && $connectionsMap[$flight->id];
+            
+            // Use direct terminal if available, otherwise fall back to gate's terminal
+            if (!$flight->terminalDirect && $flight->gate && $flight->gate->terminal) {
+                $flight->terminal = $flight->gate->terminal;
+            } elseif ($flight->terminalDirect) {
+                $flight->terminal = $flight->terminalDirect;
+            }
+            
+            return $flight;
+        })->withQueryString();
 
         // Get dropdown options for create/edit forms
         // Return the canonical status key used in the production dump: `id_status_code` (string)

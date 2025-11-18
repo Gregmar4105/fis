@@ -309,6 +309,7 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon"
+                                                        className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                                                         onClick={() => openEditDialog(claim)}
                                                     >
                                                         <Pencil className="w-4 h-4" />
@@ -316,9 +317,10 @@ export default function BaggageClaimManagement({ baggageClaims, terminals = [], 
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon"
+                                                        className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                                                         onClick={() => handleDelete(claim)}
                                                     >
-                                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                                        <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
