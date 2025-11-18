@@ -217,7 +217,7 @@ class FlightManagementController extends Controller
         }
 
         $rules = [
-            'flight_number' => 'required|string|max:10',
+            'flight_number' => 'required|string|max:10|unique:flights,flight_number',
             'airline_code' => 'required|string|exists:airlines,airline_code',
             'aircraft_icao_code' => 'nullable|string|exists:aircrafts,icao_code',
             'origin_code' => 'required|string|exists:airports,iata_code',
@@ -362,7 +362,7 @@ class FlightManagementController extends Controller
         }
 
         $rules = [
-            'flight_number' => 'sometimes|string|max:10',
+            'flight_number' => 'sometimes|string|max:10|unique:flights,flight_number,' . $flight->id,
             'airline_code' => 'sometimes|string|exists:airlines,airline_code',
             'origin_code' => 'sometimes|string|exists:airports,iata_code',
             'destination_code' => 'sometimes|string|exists:airports,iata_code|different:origin_code',

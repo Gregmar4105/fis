@@ -28,6 +28,13 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
     const [originLetter, setOriginLetter] = React.useState<string | null>(null);
     const [destinationLetter, setDestinationLetter] = React.useState<string | null>(null);
     const [connectingLetter, setConnectingLetter] = React.useState<string | null>(null);
+    const [airlineLetter, setAirlineLetter] = React.useState<string | null>(null);
+    const [aircraftLetter, setAircraftLetter] = React.useState<string | null>(null);
+    const [connectingSearch, setConnectingSearch] = React.useState<string>('');
+    const [airlineSearch, setAirlineSearch] = React.useState<string>('');
+    const [aircraftSearch, setAircraftSearch] = React.useState<string>('');
+    const [originSearch, setOriginSearch] = React.useState<string>('');
+    const [destinationSearch, setDestinationSearch] = React.useState<string>('');
 
     // Auto-select airline based on leading airline code in flight number
     const onFlightNumberChange = (value: string) => {
@@ -166,9 +173,38 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
             <div className="grid gap-2">
                 <Label htmlFor="airline_code">Airline *</Label>
                 <Select value={form.data.airline_code ?? ''} onValueChange={(v: any) => form.setData('airline_code', v)}>
-                    <SelectTrigger id="airline_code"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        {(options.airlines || []).map((a: any) => (
+                    <SelectTrigger id="airline_code"><SelectValue placeholder="Select airline" /></SelectTrigger>
+                    <SelectContent className="max-h-72 overflow-auto w-[36rem] left-1/2 -translate-x-1/2">
+                        <div className="px-2 py-2 border-b">
+                            <Input
+                                placeholder="Search airline..."
+                                value={airlineSearch}
+                                onChange={(e) => setAirlineSearch(e.target.value)}
+                                className="h-8"
+                                onKeyDown={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
+                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                <button
+                                    key={`airline-letter-${ch}`}
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                        setAirlineLetter(airlineLetter === ch ? null : ch);
+                                        setAirlineSearch('');
+                                    }}
+                                    className={`text-xs px-1 ${airlineLetter === ch ? 'underline font-bold' : ''}`}
+                                >{ch}</button>
+                            ))}
+                        </div>
+                        {((options.airlines || []).filter((a: any) => {
+                            const matchesSearch = !airlineSearch || 
+                                (a.airline_code || '').toLowerCase().includes(airlineSearch.toLowerCase()) ||
+                                (a.airline_name || '').toLowerCase().includes(airlineSearch.toLowerCase());
+                            const matchesLetter = !airlineLetter || (a.airline_code || '').startsWith(airlineLetter);
+                            return matchesSearch && matchesLetter;
+                        })).map((a: any) => (
                             <SelectItem key={`airline-${a.airline_code}`} value={a.airline_code}>{a.airline_code} - {a.airline_name}</SelectItem>
                         ))}
                     </SelectContent>
@@ -176,14 +212,44 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="aircraft_icao_code">Aircraft (Optional)</Label>
+                <Label htmlFor="aircraft_icao_code">Aircraft</Label>
                 <Select value={form.data.aircraft_icao_code || 'none'} onValueChange={(v: any) => form.setData('aircraft_icao_code', v === 'none' ? null : v)}>
                     <SelectTrigger id="aircraft_icao_code">
                         <SelectValue placeholder="Select aircraft" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-72 overflow-auto w-[36rem] left-1/2 -translate-x-1/2">
+                        <div className="px-2 py-2 border-b">
+                            <Input
+                                placeholder="Search aircraft..."
+                                value={aircraftSearch}
+                                onChange={(e) => setAircraftSearch(e.target.value)}
+                                className="h-8"
+                                onKeyDown={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
+                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                <button
+                                    key={`aircraft-letter-${ch}`}
+                                    type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                        setAircraftLetter(aircraftLetter === ch ? null : ch);
+                                        setAircraftSearch('');
+                                    }}
+                                    className={`text-xs px-1 ${aircraftLetter === ch ? 'underline font-bold' : ''}`}
+                                >{ch}</button>
+                            ))}
+                        </div>
                         <SelectItem value="none">None</SelectItem>
-                        {(options.aircraft || []).map((ac: any) => (
+                        {((options.aircraft || []).filter((ac: any) => {
+                            const matchesSearch = !aircraftSearch || 
+                                (ac.icao_code || '').toLowerCase().includes(aircraftSearch.toLowerCase()) ||
+                                (ac.manufacturer || '').toLowerCase().includes(aircraftSearch.toLowerCase()) ||
+                                (ac.model_name || '').toLowerCase().includes(aircraftSearch.toLowerCase());
+                            const matchesLetter = !aircraftLetter || (ac.icao_code || '').startsWith(aircraftLetter);
+                            return matchesSearch && matchesLetter;
+                        })).map((ac: any) => (
                             <SelectItem key={`aircraft-${ac.icao_code}`} value={ac.icao_code}>
                                 {ac.icao_code} - {ac.manufacturer} {ac.model_name}
                             </SelectItem>
@@ -197,20 +263,38 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                 <div className="grid gap-2">
                     <Label htmlFor="origin_code">Origin *</Label>
                     <Select value={form.data.origin_code ?? ''} onValueChange={(v: any) => form.setData('origin_code', v)}>
-                        <SelectTrigger id="origin_code"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="origin_code"><SelectValue placeholder="Select origin" /></SelectTrigger>
                         <SelectContent className="max-h-72 overflow-auto w-[36rem] left-1/2 -translate-x-1/2">
-                            <div className="px-2 py-1 flex gap-1 flex-wrap">
+                            <div className="px-2 py-2 border-b">
+                                <Input
+                                    placeholder="Search origin..."
+                                    value={originSearch}
+                                    onChange={(e) => setOriginSearch(e.target.value)}
+                                    className="h-8"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                            <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
                                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
                                     <button
                                         key={`origin-letter-${ch}`}
                                         type="button"
                                         onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => setOriginLetter(originLetter === ch ? null : ch)}
-                                        className={`text-xs px-1 ${originLetter === ch ? 'underline' : ''}`}
+                                        onClick={() => {
+                                            setOriginLetter(originLetter === ch ? null : ch);
+                                            setOriginSearch('');
+                                        }}
+                                        className={`text-xs px-1 ${originLetter === ch ? 'underline font-bold' : ''}`}
                                     >{ch}</button>
                                 ))}
                             </div>
-                            {((options.airports || []).filter((ap: any) => !originLetter || (ap.iata_code || '').startsWith(originLetter))).map((ap: any) => (
+                            {((options.airports || []).filter((ap: any) => {
+                                const matchesSearch = !originSearch || 
+                                    (ap.iata_code || '').toLowerCase().includes(originSearch.toLowerCase()) ||
+                                    (ap.city || '').toLowerCase().includes(originSearch.toLowerCase());
+                                const matchesLetter = !originLetter || (ap.iata_code || '').startsWith(originLetter);
+                                return matchesSearch && matchesLetter;
+                            })).map((ap: any) => (
                                 <SelectItem key={`airport-${ap.iata_code}`} value={ap.iata_code}>{ap.iata_code} - {ap.city}</SelectItem>
                             ))}
                         </SelectContent>
@@ -220,20 +304,38 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                 <div className="grid gap-2">
                     <Label htmlFor="destination_code">Destination *</Label>
                     <Select value={form.data.destination_code ?? ''} onValueChange={(v: any) => form.setData('destination_code', v)}>
-                        <SelectTrigger id="destination_code"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="destination_code"><SelectValue placeholder="Select destination" /></SelectTrigger>
                         <SelectContent className="max-h-72 overflow-auto w-[36rem] left-1/2 -translate-x-1/2">
-                            <div className="px-2 py-1 flex gap-1 flex-wrap">
+                            <div className="px-2 py-2 border-b">
+                                <Input
+                                    placeholder="Search destination..."
+                                    value={destinationSearch}
+                                    onChange={(e) => setDestinationSearch(e.target.value)}
+                                    className="h-8"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                            <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
                                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
                                     <button
                                         key={`destination-letter-${ch}`}
                                         type="button"
                                         onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => setDestinationLetter(destinationLetter === ch ? null : ch)}
-                                        className={`text-xs px-1 ${destinationLetter === ch ? 'underline' : ''}`}
+                                        onClick={() => {
+                                            setDestinationLetter(destinationLetter === ch ? null : ch);
+                                            setDestinationSearch('');
+                                        }}
+                                        className={`text-xs px-1 ${destinationLetter === ch ? 'underline font-bold' : ''}`}
                                     >{ch}</button>
                                 ))}
                             </div>
-                            {((options.airports || []).filter((ap: any) => !destinationLetter || (ap.iata_code || '').startsWith(destinationLetter))).map((ap: any) => (
+                            {((options.airports || []).filter((ap: any) => {
+                                const matchesSearch = !destinationSearch || 
+                                    (ap.iata_code || '').toLowerCase().includes(destinationSearch.toLowerCase()) ||
+                                    (ap.city || '').toLowerCase().includes(destinationSearch.toLowerCase());
+                                const matchesLetter = !destinationLetter || (ap.iata_code || '').startsWith(destinationLetter);
+                                return matchesSearch && matchesLetter;
+                            })).map((ap: any) => (
                                 <SelectItem key={`airport-${ap.iata_code}`} value={ap.iata_code}>{ap.iata_code} - {ap.city}</SelectItem>
                             ))}
                         </SelectContent>
@@ -244,12 +346,42 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                     <Label htmlFor="scheduled_departure_time">Scheduled Departure *</Label>
-                    <Input id="scheduled_departure_time" type="datetime-local" value={form.data.scheduled_departure_time} onChange={(e: any) => form.setData('scheduled_departure_time', e.target.value)} required />
+                    <div className="relative">
+                        <Input 
+                            id="scheduled_departure_time" 
+                            type="datetime-local" 
+                            value={form.data.scheduled_departure_time} 
+                            onChange={(e: any) => form.setData('scheduled_departure_time', e.target.value)} 
+                            required 
+                            className="pr-10"
+                            placeholder="dd/mm/yyyy --:-- --"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </span>
+                    </div>
                     {form.errors?.scheduled_departure_time && <div className="text-destructive text-sm mt-1">{form.errors.scheduled_departure_time}</div>}
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="scheduled_arrival_time">Scheduled Arrival *</Label>
-                    <Input id="scheduled_arrival_time" type="datetime-local" value={form.data.scheduled_arrival_time} onChange={(e: any) => form.setData('scheduled_arrival_time', e.target.value)} required />
+                    <div className="relative">
+                        <Input 
+                            id="scheduled_arrival_time" 
+                            type="datetime-local" 
+                            value={form.data.scheduled_arrival_time} 
+                            onChange={(e: any) => form.setData('scheduled_arrival_time', e.target.value)} 
+                            required 
+                            className="pr-10"
+                            placeholder="dd/mm/yyyy --:-- --"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </span>
+                    </div>
                     {form.errors?.scheduled_arrival_time && <div className="text-destructive text-sm mt-1">{form.errors.scheduled_arrival_time}</div>}
                 </div>
             </div>
@@ -285,23 +417,42 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                         <Label htmlFor="connecting_departure_id">Connecting From (Departure Flight)</Label>
                         {options.connectingFlights || options.flights ? (
                             <Select value={form.data.connecting_departure_id ?? ''} onValueChange={(v: any) => form.setData('connecting_departure_id', v)}>
-                                <SelectTrigger id="connecting_departure_id"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <div className="px-2 py-1 flex gap-1 flex-wrap">
+                                <SelectTrigger id="connecting_departure_id"><SelectValue placeholder="Select connecting flight" /></SelectTrigger>
+                                <SelectContent className="max-h-72 overflow-auto w-[36rem] left-1/2 -translate-x-1/2">
+                                    <div className="px-2 py-2 border-b">
+                                        <Input
+                                            placeholder="Search connecting flight..."
+                                            value={connectingSearch}
+                                            onChange={(e) => setConnectingSearch(e.target.value)}
+                                            className="h-8"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                    <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
                                         {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
                                             <button
                                                 key={`connecting-letter-${ch}`}
                                                 type="button"
                                                 onMouseDown={(e) => e.preventDefault()}
-                                                onClick={() => setConnectingLetter(connectingLetter === ch ? null : ch)}
-                                                className={`text-xs px-1 ${connectingLetter === ch ? 'underline' : ''}`}
+                                                onClick={() => {
+                                                    setConnectingLetter(connectingLetter === ch ? null : ch);
+                                                    setConnectingSearch('');
+                                                }}
+                                                className={`text-xs px-1 ${connectingLetter === ch ? 'underline font-bold' : ''}`}
                                             >{ch}</button>
                                         ))}
                                     </div>
-                                            {((options.connectingFlights || options.flights || []).filter((f: any) => !connectingLetter || (String(f.flight_number || '').startsWith(connectingLetter)))).map((f: any) => (
+                                    {((options.connectingFlights || options.flights || []).filter((f: any) => {
+                                        const matchesSearch = !connectingSearch || 
+                                            (f.flight_number || '').toLowerCase().includes(connectingSearch.toLowerCase()) ||
+                                            (f.origin_code || '').toLowerCase().includes(connectingSearch.toLowerCase()) ||
+                                            (f.destination_code || '').toLowerCase().includes(connectingSearch.toLowerCase());
+                                        const matchesLetter = !connectingLetter || (String(f.flight_number || '').startsWith(connectingLetter));
+                                        return matchesSearch && matchesLetter;
+                                    })).map((f: any) => (
                                         <SelectItem key={`connecting-${f.id}`} value={String(f.id)}>{f.flight_number} — {f.origin_code} → {f.destination_code} ({f.scheduled_departure_time ? new Date(f.scheduled_departure_time).toLocaleString() : 'TBD'})</SelectItem>
                                     ))}
-                                        </SelectContent>
+                                </SelectContent>
                             </Select>
                         ) : (
                             <Input id="connecting_departure_id" value={form.data.connecting_departure_id || ''} onChange={(e: any) => form.setData('connecting_departure_id', e.target.value)} placeholder="Flight ID or number" />
