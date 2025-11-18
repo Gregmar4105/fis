@@ -41,7 +41,7 @@ export function NavMain() {
                             tooltip="Dashboard"
                         >
                             <Link href="/dashboard">
-                                <LayoutDashboard className="w-4 h-4" />
+                                <LayoutDashboard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                                 <span>Dashboard</span>
                             </Link>
                         </SidebarMenuButton>
@@ -57,11 +57,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/schedule/all')}
-                            tooltip="All Schedules"
+                            tooltip="Flight Schedules"
                         >
                             <Link href={schedule.url('all')}>
-                                <Calendar className="w-4 h-4" />
-                                <span>Schedules</span>
+                                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span>Flight Schedules</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -70,11 +70,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/schedule/arrivals')}
-                            tooltip="Arrivals"
+                            tooltip="Flight Arrivals"
                         >
                             <Link href={schedule.url('arrivals')}>
-                                <PlaneLanding className="w-4 h-4" />
-                                <span>Arrivals</span>
+                                <PlaneLanding className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                <span>Flight Arrivals</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -83,11 +83,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/schedule/departures')}
-                            tooltip="Departures"
+                            tooltip="Flight Departures"
                         >
                             <Link href={schedule.url('departures')}>
-                                <PlaneTakeoff className="w-4 h-4" />
-                                <span>Departures</span>
+                                <PlaneTakeoff className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                <span>Flight Departures</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -96,11 +96,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/connections')}
-                            tooltip="Connecting Flights"
+                            tooltip="Flight Connections"
                         >
                             <Link href={connections.url()}>
-                                <RouteIcon className="w-4 h-4" />
-                                <span>Connections</span>
+                                <RouteIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                <span>Flight Connections</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -128,11 +128,11 @@ export function NavMain() {
                         <SidebarMenuButton 
                             asChild 
                             isActive={currentUrl.includes('/flights/status-update')}
-                            tooltip="Flight Update"
+                            tooltip="Quick Flight Update"
                         >
                             <Link href="/flights/status-update">
-                                <Zap className="w-4 h-4" />
-                                <span>Flight Update</span>
+                                <Zap className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                                <span>Quick Flight Update</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -150,7 +150,7 @@ export function NavMain() {
                             tooltip="Terminal Management"
                         >
                             <Link href="/management/terminals">
-                                <Building2 className="w-4 h-4" />
+                                <Building2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                                 <span>Terminals</span>
                             </Link>
                         </SidebarMenuButton>
@@ -163,7 +163,7 @@ export function NavMain() {
                             tooltip="Gate Management"
                         >
                             <Link href="/management/gates">
-                                <DoorOpen className="w-4 h-4" />
+                                <DoorOpen className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                                 <span>Gates</span>
                             </Link>
                         </SidebarMenuButton>
@@ -176,7 +176,7 @@ export function NavMain() {
                             tooltip="Baggage Belt Management"
                         >
                             <Link href="/management/baggage-belts">
-                                <Luggage className="w-4 h-4" />
+                                <Luggage className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                                 <span>Baggage Belts</span>
                             </Link>
                         </SidebarMenuButton>

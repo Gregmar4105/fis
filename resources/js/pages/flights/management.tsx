@@ -230,7 +230,9 @@ export default function FlightManagement({ flights, filters, options }: Props) {
     };
 
     const getStatusColor = (statusCode: string) => {
-        switch (statusCode) {
+        // Extract just the code part (e.g., 'SCH' from '1-SCH' or 'SCH')
+        const code = statusCode.includes('-') ? statusCode.split('-')[1] : statusCode;
+        switch (code) {
             case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
             case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
             case 'DEP': return 'bg-green-600/20 text-green-600 border-green-600/30 dark:bg-green-600/20 dark:text-green-500 dark:border-green-600/30';

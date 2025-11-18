@@ -220,9 +220,9 @@ export default function FlightsIndex({ flights, scheduleType, localAirport, opti
 
     const getPageTitle = () => {
         switch (scheduleType) {
-            case 'arrivals': return 'Arrivals';
-            case 'departures': return 'Departures';
-            default: return 'All Flight Schedules';
+            case 'arrivals': return 'Flight Arrivals';
+            case 'departures': return 'Flight Departures';
+            default: return 'Flight Schedules';
         }
     };
 
@@ -297,7 +297,7 @@ export default function FlightsIndex({ flights, scheduleType, localAirport, opti
                         >
                             <Link href="/schedule/all" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <Calendar className="w-3 h-3" />
-                                All Flights
+                                Flight Schedules
                             </Link>
                         </Badge>
                         <Badge 
@@ -306,7 +306,7 @@ export default function FlightsIndex({ flights, scheduleType, localAirport, opti
                         >
                             <Link href="/schedule/arrivals" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <PlaneLanding className="w-3 h-3" />
-                                Arrivals
+                                Flight Arrivals
                             </Link>
                         </Badge>
                         <Badge 
@@ -315,7 +315,7 @@ export default function FlightsIndex({ flights, scheduleType, localAirport, opti
                         >
                             <Link href="/schedule/departures" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <PlaneTakeoff className="w-3 h-3" />
-                                Departures
+                                Flight Departures
                             </Link>
                         </Badge>
                         <Badge 
@@ -324,7 +324,7 @@ export default function FlightsIndex({ flights, scheduleType, localAirport, opti
                         >
                             <Link href="/connections" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <RouteIcon className="w-3 h-3" />
-                                Connections
+                                Flight Connections
                             </Link>
                         </Badge>
                     </div>

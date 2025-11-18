@@ -183,7 +183,7 @@ export default function FlightConnections({ flights, title }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Flight Schedules', href: '/schedule/all' },
-        { title: 'Connections', href: '#' },
+        { title: 'Flight Connections', href: '#' },
     ];
 
     const getStatusColor = (statusCode: string) => {
@@ -211,7 +211,7 @@ export default function FlightConnections({ flights, title }: Props) {
                         <div>
                             <div className="flex items-center gap-3">
                                 <RouteIcon className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                                <h2 className="text-3xl font-bold tracking-tight">Connections</h2>
+                                <h2 className="text-3xl font-bold tracking-tight">Flight Connections</h2>
                             </div>
                             <p className="text-muted-foreground mt-1 flex items-center gap-2">
                                 Connecting flights • {flights.total} total
@@ -248,7 +248,7 @@ export default function FlightConnections({ flights, title }: Props) {
                         >
                             <Link href="/schedule/all" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <Calendar className="w-3 h-3" />
-                                All Flights
+                                Flight Schedules
                             </Link>
                         </Badge>
                         <Badge 
@@ -257,7 +257,7 @@ export default function FlightConnections({ flights, title }: Props) {
                         >
                             <Link href="/schedule/arrivals" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <PlaneLanding className="w-3 h-3" />
-                                Arrivals
+                                Flight Arrivals
                             </Link>
                         </Badge>
                         <Badge 
@@ -266,7 +266,7 @@ export default function FlightConnections({ flights, title }: Props) {
                         >
                             <Link href="/schedule/departures" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <PlaneTakeoff className="w-3 h-3" />
-                                Departures
+                                Flight Departures
                             </Link>
                         </Badge>
                         <Badge 
@@ -275,7 +275,7 @@ export default function FlightConnections({ flights, title }: Props) {
                         >
                             <Link href="/connections" className="px-3 py-1 flex items-center justify-center gap-1.5">
                                 <RouteIcon className="w-3 h-3" />
-                                Connections
+                                Flight Connections
                             </Link>
                         </Badge>
                     </div>
@@ -360,9 +360,9 @@ export default function FlightConnections({ flights, title }: Props) {
                                         filteredFlights.map((flight) => (
                                             <TableRow key={flight.id} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
                                                 {/* Flight Number with Connection Type */}
-                                                <TableCell className="font-bold text-primary w-24">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="truncate">{flight.flight_number}</span>
+                                                <TableCell className="font-bold text-primary w-24 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span className="truncate text-left">{flight.flight_number}</span>
                                                         {flight.inbound_connections && flight.inbound_connections.length > 0 && (
                                                             <Badge variant="outline" className="gap-1 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 inline-flex items-center justify-center h-5 px-1.5 shrink-0">
                                                                 <Plane className="w-3 h-3 rotate-180" />
