@@ -86,7 +86,7 @@ class FlightOperationsService
             // 2. Log audit event
             FlightEvent::create([
                 'flight_id' => $flight->id,
-                'event_type' => 'BELT_CHANGE',
+                'event_type' => 'CLAIM_CHANGE',
                 'old_fk_id' => $oldBeltId,
                 'new_fk_id' => $newBelt->id,
             ]);

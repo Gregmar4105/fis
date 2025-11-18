@@ -233,23 +233,9 @@ class FlightManagementController extends Controller
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             $errors = $validator->errors()->toArray();
-            // If there is an existing flight that matches the provided flight_number, attach a validation-failed event
-            try {
-                if ($request->has('flight_number') && $request->flight_number) {
-                    $existing = Flight::where('flight_number', $request->flight_number)->first();
-                    if ($existing) {
-                        $existing->events()->create([
-                            'event_type' => 'validation_failed',
-                            'description' => 'Validation failed on create attempt',
-                            'new_value' => json_encode($errors),
-                            'timestamp' => now(),
-                        ]);
-                    }
-                }
-            } catch (\Exception $e) {
-                // Log but do not block returning validation errors
-                Log::warning('Failed to persist validation event for flight create', ['error' => $e->getMessage()]);
-            }
+            // If there is an existing flight that matches the provided flight_number, log validation failure
+            // Note: 'validation_failed' is not a valid enum value, so we skip event creation
+            // Validation errors are already returned to the user
 
             return redirect()->back()->withErrors($validator)->withInput();
         }
@@ -258,12 +244,8 @@ class FlightManagementController extends Controller
         // Create the flight
         $flight = Flight::create($validated);
 
-        // Create initial event log
-        $flight->events()->create([
-            'event_type' => 'created',
-            'description' => 'Flight created in FIS',
-            'timestamp' => now(),
-        ]);
+        // Create initial event log (skip if event_type enum doesn't support 'created')
+        // Note: The database uses an ENUM for event_type, so we'll log creation info in TIME_UPDATE instead
 
         // Record server-computed and client-submitted times as a TIME_UPDATE event
         try {
@@ -285,32 +267,29 @@ class FlightManagementController extends Controller
             if (count($times)) {
                 $flight->events()->create([
                     'event_type' => 'TIME_UPDATE',
-                    'description' => 'Server and client submitted timestamps',
+                    'description' => 'Flight created in FIS. Server and client submitted timestamps: ' . json_encode($times),
                     'new_value' => json_encode($times),
                     'timestamp' => now(),
                 ]);
+            } else {
+                // If no times to record, still create a TIME_UPDATE event to log flight creation
+                try {
+                    $flight->events()->create([
+                        'event_type' => 'TIME_UPDATE',
+                        'description' => 'Flight created in FIS',
+                        'timestamp' => now(),
+                    ]);
+                } catch (\Exception $e) {
+                    // Non-blocking: log if needed, but do not fail creation
+                    Log::warning('Failed to create TIME_UPDATE event for flight creation', ['error' => $e->getMessage()]);
+                }
             }
         } catch (\Exception $e) {
             // ignore non-fatal event recording errors
         }
 
-        // Record computed flight hours as an event (use UTC times from validated payload)
-        try {
-            if (!empty($validated['scheduled_departure_time']) && !empty($validated['scheduled_arrival_time'])) {
-                $dep = Carbon::parse($validated['scheduled_departure_time'])->setTimezone('UTC');
-                $arr = Carbon::parse($validated['scheduled_arrival_time'])->setTimezone('UTC');
-                $minutes = $dep->diffInMinutes($arr);
-                $hours = round($minutes / 60, 2);
-                $flight->events()->create([
-                    'event_type' => 'flight_hours',
-                    'description' => 'Scheduled flight duration (hours)',
-                    'new_value' => (string)$hours,
-                    'timestamp' => now(),
-                ]);
-            }
-        } catch (\Exception $e) {
-            // non-blocking: log if needed, but do not fail creation
-        }
+        // Record computed flight hours in the TIME_UPDATE event description (flight_hours is not a valid enum)
+        // This is already handled in the TIME_UPDATE event above
 
         // Ensure departure and arrival fact rows exist immediately after creating the master flight.
         // This makes downstream services (n8n, outbound notifications) safer by guaranteeing
@@ -399,16 +378,8 @@ class FlightManagementController extends Controller
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             $errors = $validator->errors()->toArray();
-            try {
-                $flight->events()->create([
-                    'event_type' => 'validation_failed',
-                    'description' => 'Validation failed on update attempt',
-                    'new_value' => json_encode($errors),
-                    'timestamp' => now(),
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to persist validation event for flight update', ['flight_id' => $flight->id, 'error' => $e->getMessage()]);
-            }
+            // Note: 'validation_failed' is not a valid enum value, so we skip event creation
+            // Validation errors are already returned to the user
 
             return redirect()->back()->withErrors($validator)->withInput();
         }

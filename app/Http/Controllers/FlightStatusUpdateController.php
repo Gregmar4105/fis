@@ -127,7 +127,7 @@ class FlightStatusUpdateController extends Controller
         // Log the status change event
         FlightEvent::create([
             'flight_id' => $flight->id,
-            'event_type' => 'status_change',
+            'event_type' => 'STATUS_CHANGE',
             'old_value' => $oldStatus?->status_name,
             'new_value' => $flight->status->status_name,
         ]);
@@ -152,7 +152,7 @@ class FlightStatusUpdateController extends Controller
         // Log the gate change event
         FlightEvent::create([
             'flight_id' => $flight->id,
-            'event_type' => 'gate_change',
+            'event_type' => 'GATE_CHANGE',
             'old_value' => $oldGate?->gate_code,
             'new_value' => $flight->gate?->gate_code ?? 'Unassigned',
         ]);
@@ -177,7 +177,7 @@ class FlightStatusUpdateController extends Controller
         // Log the baggage belt change event
         FlightEvent::create([
             'flight_id' => $flight->id,
-            'event_type' => 'baggage_belt_change',
+            'event_type' => 'CLAIM_CHANGE',
             'old_value' => $oldBelt?->belt_code,
             'new_value' => $flight->baggageBelt?->belt_code ?? 'Unassigned',
         ]);
@@ -209,7 +209,7 @@ class FlightStatusUpdateController extends Controller
                     
                     FlightEvent::create([
                         'flight_id' => $flight->id,
-                        'event_type' => 'status_change',
+                        'event_type' => 'STATUS_CHANGE',
                         'old_value' => $oldStatus?->status_name,
                         'new_value' => $flight->status->status_name,
                     ]);
@@ -222,7 +222,7 @@ class FlightStatusUpdateController extends Controller
                     
                     FlightEvent::create([
                         'flight_id' => $flight->id,
-                        'event_type' => 'gate_change',
+                        'event_type' => 'GATE_CHANGE',
                         'old_value' => $oldGate?->gate_code,
                         'new_value' => $flight->gate?->gate_code ?? 'Unassigned',
                     ]);
@@ -235,7 +235,7 @@ class FlightStatusUpdateController extends Controller
                     
                     FlightEvent::create([
                         'flight_id' => $flight->id,
-                        'event_type' => 'baggage_belt_change',
+                        'event_type' => 'CLAIM_CHANGE',
                         'old_value' => $oldBelt?->belt_code,
                         'new_value' => $flight->baggageBelt?->belt_code ?? 'Unassigned',
                     ]);
