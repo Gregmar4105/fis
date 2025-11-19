@@ -175,70 +175,80 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                 {/* Stats Grid */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {/* Total Flights */}
-                    <Card className="hover:shadow-lg transition-shadow border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400">
+                    <Card className="hover:shadow-xl transition-all duration-300 border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-slate-900">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Flights</CardTitle>
-                            <LayoutDashboard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            <CardTitle className="text-sm font-semibold">Total Flights</CardTitle>
+                            <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                                <LayoutDashboard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{dashboardStats.totalFlights}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">{dashboardStats.totalFlights}</div>
+                            <p className="text-xs text-muted-foreground font-medium">
                                 Currently being tracked
                             </p>
                         </CardContent>
                     </Card>
 
                     {/* Delayed Flights */}
-                    <Card className="hover:shadow-lg transition-shadow border-yellow-200 dark:border-yellow-800">
+                    <Card className="hover:shadow-xl transition-all duration-300 border-2 border-yellow-200 dark:border-yellow-800 hover:border-yellow-500 dark:hover:border-yellow-400 bg-gradient-to-br from-yellow-50/50 to-white dark:from-yellow-950/20 dark:to-slate-900">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Delayed</CardTitle>
-                            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                            <CardTitle className="text-sm font-semibold">Delayed</CardTitle>
+                            <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{dashboardStats.delayed}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">{dashboardStats.delayed}</div>
+                            <p className="text-xs text-muted-foreground font-medium">
                                 Flights experiencing delays
                             </p>
                         </CardContent>
                     </Card>
 
                     {/* Cancelled Flights */}
-                    <Card className="hover:shadow-lg transition-shadow border-red-200 dark:border-red-800">
+                    <Card className="hover:shadow-xl transition-all duration-300 border-2 border-red-200 dark:border-red-800 hover:border-red-500 dark:hover:border-red-400 bg-gradient-to-br from-red-50/50 to-white dark:from-red-950/20 dark:to-slate-900">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
-                            <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            <CardTitle className="text-sm font-semibold">Cancelled</CardTitle>
+                            <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                                <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">{dashboardStats.cancelled}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <div className="text-4xl font-bold text-red-600 dark:text-red-400 mb-1">{dashboardStats.cancelled}</div>
+                            <p className="text-xs text-muted-foreground font-medium">
                                 Flights that have been cancelled
                             </p>
                         </CardContent>
                     </Card>
 
                     {/* Arrivals */}
-                    <Card className="hover:shadow-lg transition-shadow border-green-200 dark:border-green-800 hover:border-green-500 dark:hover:border-green-400">
+                    <Card className="hover:shadow-xl transition-all duration-300 border-2 border-green-200 dark:border-green-800 hover:border-green-500 dark:hover:border-green-400 bg-gradient-to-br from-green-50/50 to-white dark:from-green-950/20 dark:to-slate-900">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Arrivals</CardTitle>
-                            <PlaneLanding className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <CardTitle className="text-sm font-semibold">Arrivals</CardTitle>
+                            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <PlaneLanding className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{dashboardStats.arrivals}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-1">{dashboardStats.arrivals}</div>
+                            <p className="text-xs text-muted-foreground font-medium">
                                 Expected incoming flights
                             </p>
                         </CardContent>
                     </Card>
 
                     {/* Departures */}
-                    <Card className="hover:shadow-lg transition-shadow border-purple-200 dark:border-purple-800 hover:border-purple-500 dark:hover:border-purple-400">
+                    <Card className="hover:shadow-xl transition-all duration-300 border-2 border-purple-200 dark:border-purple-800 hover:border-purple-500 dark:hover:border-purple-400 bg-gradient-to-br from-purple-50/50 to-white dark:from-purple-950/20 dark:to-slate-900">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Departures</CardTitle>
-                            <PlaneTakeoff className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            <CardTitle className="text-sm font-semibold">Departures</CardTitle>
+                            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                <PlaneTakeoff className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{dashboardStats.departures}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">{dashboardStats.departures}</div>
+                            <p className="text-xs text-muted-foreground font-medium">
                                 Scheduled outgoing flights
                             </p>
                         </CardContent>
@@ -246,14 +256,16 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
 
                     {/* Connections */}
                     <Link href={connections.url()}>
-                        <Card className="hover:shadow-lg transition-shadow border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer">
+                        <Card className="hover:shadow-xl transition-all duration-300 border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400 cursor-pointer bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-slate-900">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Connections</CardTitle>
-                                <RouteIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                <CardTitle className="text-sm font-semibold">Connections</CardTitle>
+                                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                                    <RouteIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{dashboardStats.connections}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">{dashboardStats.connections}</div>
+                                <p className="text-xs text-muted-foreground font-medium">
                                     Flights with connections
                                 </p>
                             </CardContent>
@@ -263,29 +275,32 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
 
                 {/* Flight Schedules */}
                 {activeFlights.length > 0 && (
-                    <Card>
-                        <CardHeader>
+                    <Card className="shadow-lg">
+                        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-b">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                        <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                    </div>
                                     <div>
-                                        <CardTitle>Flight Schedules</CardTitle>
-                                        <CardDescription>Next 5 flights in the system</CardDescription>
+                                        <CardTitle className="text-xl">Flight Schedules</CardTitle>
+                                        <CardDescription className="text-sm mt-1">
+                                            All active flights in the system ({activeFlights.length} total)
+                                        </CardDescription>
                                     </div>
                                 </div>
                                 <Link href={schedule.url('all')}>
-                                    <Badge variant="outline" className="cursor-pointer hover:bg-primary/80">
-                                        View All
+                                    <Badge variant="outline" className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-4 py-2">
+                                        View Full Schedule
                                     </Badge>
                                 </Link>
                             </div>
                         </CardHeader>
-                        <Separator />
-                        <CardContent className="pt-6">
-                            <div className="rounded-lg border">
-                                <Table className="table-fixed">
+                        <CardContent className="pt-6 p-0">
+                            <div className="overflow-x-auto">
+                                <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-muted/50">
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
                                             <TableHead className="font-semibold text-center w-24">Flight #</TableHead>
                                             <TableHead className="font-semibold text-center w-32">Route</TableHead>
                                             <TableHead className="font-semibold text-center w-28">Airline</TableHead>
@@ -299,7 +314,7 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {activeFlights.slice(0, 5).map((flight) => (
+                                        {activeFlights.map((flight) => (
                                             <TableRow key={flight.id} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
                                                 <TableCell className="font-bold text-primary w-24 text-center">
                                                     {flight.flight_number}

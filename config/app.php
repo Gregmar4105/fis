@@ -122,7 +122,7 @@ return [
         /*
          * Package Service Providers (Based on your project files)
          */
-        Barryvdh\Debugbar\ServiceProvider::class,
+        // Barryvdh\Debugbar\ServiceProvider::class, // Disabled - remove debugbar header
        // Laravel\Telescope\TelescopeServiceProvider::class,
        // Spatie\Permission\PermissionServiceProvider::class,
         Inertia\ServiceProvider::class,

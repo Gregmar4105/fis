@@ -19,64 +19,74 @@ class DashboardController extends Controller
      */
     public function index(): Response
     {
-        // Get flight status IDs (cached to reduce DB queries)
-        $statuses = Cache::remember('flight_statuses', 3600, function () {
-            return FlightStatus::pluck('id_status_code', 'status_code')->toArray();
-        });
-
-        $scheduledId = $statuses['SCH'] ?? null;
-        $boardingId = $statuses['BRD'] ?? null;
-        $delayedId = $statuses['DLY'] ?? null;
-        $arrivedId = $statuses['ARR'] ?? null;
-        $departedId = $statuses['DEP'] ?? null;
-        $cancelledId = $statuses['CNX'] ?? null;
-
-        // Get today's flights (active flights within next 24 hours)
-        $now = now();
-        $tomorrow = now()->addDay();
+        // Use the same logic as FlightScheduleController for consistency
+        $statusCodes = FlightStatus::pluck('id_status_code', 'status_code')->toArray();
+        $arrivedStatus = $statusCodes['ARR'] ?? '3-ARR';
+        $departedStatus = $statusCodes['DEP'] ?? '2-DEP';
+        $cancelledStatus = $statusCodes['CNX'] ?? '5-CNX';
+        $delayedId = $statusCodes['DLY'] ?? null;
         
-        // Build base query for active flights (not arrived, departed, or cancelled)
-        // Show flights from today onwards (not just today/tomorrow)
-        $activeFlightsQuery = Flight::query()
-            ->whereNotIn('fk_id_status_code', array_filter([$arrivedId, $departedId, $cancelledId]))
-            ->where('scheduled_departure_time', '>=', $now->startOfDay());
-
-        // Calculate statistics
-        // Count flights with connections (either inbound or outbound)
-        $connectionsCount = (clone $activeFlightsQuery)
-            ->where(function ($query) {
-                $query->whereHas('inboundConnections')
-                      ->orWhereHas('outboundConnections');
-            })
-            ->count();
-
-        $stats = [
-            'totalFlights' => (clone $activeFlightsQuery)->count(),
-            'arrivals' => (clone $activeFlightsQuery)->where('destination_code', 'MNL')->count(),
-            'departures' => (clone $activeFlightsQuery)->where('origin_code', 'MNL')->count(),
-            'delayed' => $delayedId ? (clone $activeFlightsQuery)->where('fk_id_status_code', $delayedId)->count() : 0,
-            'cancelled' => $cancelledId ? Flight::where('fk_id_status_code', $cancelledId)
-                ->where('scheduled_departure_time', '>=', $now->startOfDay())
-                ->count() : 0,
-            'connections' => $connectionsCount,
-        ];
-
-        // Get active flights with full details for the dashboard
-        $activeFlights = Flight::with([
+        // Base query matching FlightScheduleController
+        $baseQuery = Flight::with([
             'status',
             'airline',
             'origin',
             'destination',
+            'aircraft',
             'gate.terminal',
-            'baggageClaim',
-            'aircraft'
+            'gate.terminal.airport',
+            'baggageBelt.terminal',
+            'baggageBelt.terminal.airport',
+            'terminalDirect',
+            'terminalDirect.airport',
         ])
-            ->whereNotIn('fk_id_status_code', array_filter([$arrivedId, $departedId, $cancelledId]))
-            ->where('scheduled_departure_time', '>=', $now->startOfDay())
-            ->orderBy('scheduled_departure_time', 'asc')
-            ->limit(5)
+        ->whereNotIn('fk_id_status_code', [$cancelledStatus])
+        ->orderBy('scheduled_departure_time', 'asc');
+
+        // Calculate statistics using the same logic as all schedules page
+        $totalFlightsQuery = (clone $baseQuery);
+        $arrivalsQuery = (clone $baseQuery)->where('destination_code', 'MNL')->where('fk_id_status_code', '!=', $arrivedStatus);
+        $departuresQuery = (clone $baseQuery)->where('origin_code', 'MNL')->where('fk_id_status_code', '!=', $departedStatus);
+        
+        // Count connections efficiently - count unique flights that have connections
+        $flightIds = (clone $baseQuery)->pluck('id')->toArray();
+        $connectionsCount = 0;
+        if (!empty($flightIds)) {
+            $connectedFlightIds = \DB::table('flight_connections')
+                ->where(function($q) use ($flightIds) {
+                    $q->whereIn('arrival_flight_id', $flightIds)
+                      ->orWhereIn('departure_flight_id', $flightIds);
+                })
+                ->selectRaw('COALESCE(arrival_flight_id, departure_flight_id) as flight_id')
+                ->distinct()
+                ->pluck('flight_id')
+                ->toArray();
+            $connectionsCount = count($connectedFlightIds);
+        }
+
+        $stats = [
+            'totalFlights' => $totalFlightsQuery->count(),
+            'arrivals' => $arrivalsQuery->count(),
+            'departures' => $departuresQuery->count(),
+            'delayed' => $delayedId ? (clone $baseQuery)->where('fk_id_status_code', $delayedId)->count() : 0,
+            'cancelled' => $cancelledStatus ? Flight::where('fk_id_status_code', $cancelledStatus)->count() : 0,
+            'connections' => $connectionsCount,
+        ];
+
+        // Get all active flights (not just 5) for the dashboard table
+        $activeFlights = $baseQuery
             ->get()
             ->map(function ($flight) {
+                // Use direct terminal if available, otherwise fall back to gate's terminal
+                $terminal = null;
+                if ($flight->terminalDirect) {
+                    $terminal = $flight->terminalDirect->terminal_code ?? $flight->terminalDirect->name;
+                } elseif ($flight->gate && $flight->gate->terminal) {
+                    $terminal = $flight->gate->terminal->terminal_code ?? $flight->gate->terminal->name;
+                } elseif ($flight->baggageBelt && $flight->baggageBelt->terminal) {
+                    $terminal = $flight->baggageBelt->terminal->terminal_code ?? $flight->baggageBelt->terminal->name;
+                }
+                
                 return [
                     'id' => $flight->id,
                     'flight_number' => $flight->flight_number,
@@ -89,7 +99,7 @@ class DashboardController extends Controller
                     'status' => $flight->status?->status_name,
                     'status_code' => $flight->status?->status_code,
                     'gate' => $flight->gate?->gate_code,
-                    'terminal' => $flight->gate?->terminal?->name ?? $flight->gate?->terminal?->terminal_code,
+                    'terminal' => $terminal,
                     'baggage_belt' => $flight->baggageBelt?->belt_code,
                     'aircraft' => $flight->aircraft ? [
                         'icao_code' => $flight->aircraft->icao_code,

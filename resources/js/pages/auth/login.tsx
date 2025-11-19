@@ -28,7 +28,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                     <div className="mb-8 flex flex-col items-center">
                         <Link
                             href={home()}
-                            className="flex flex-col items-center gap-3 mb-6 group"
+                            className="flex flex-col items-center gap-2 mb-6 group"
                         >
                             <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg group-hover:shadow-xl transition-all group-hover:scale-105">
                                 <Plane className="w-7 h-7 text-white" />
