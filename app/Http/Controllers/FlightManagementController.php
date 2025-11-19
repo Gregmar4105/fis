@@ -233,11 +233,6 @@ class FlightManagementController extends Controller
 
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            $errors = $validator->errors()->toArray();
-            // If there is an existing flight that matches the provided flight_number, log validation failure
-            // Note: 'validation_failed' is not a valid enum value, so we skip event creation
-            // Validation errors are already returned to the user
-
             return redirect()->back()->withErrors($validator)->withInput();
         }
         $validated = $validator->validated();
@@ -248,45 +243,15 @@ class FlightManagementController extends Controller
         // Create initial event log (skip if event_type enum doesn't support 'created')
         // Note: The database uses an ENUM for event_type, so we'll log creation info in TIME_UPDATE instead
 
-        // Record server-computed and client-submitted times as a TIME_UPDATE event
+        // Record flight creation event
         try {
-            $times = [];
-            // server / authoritative UTC times (from the persisted model)
-            if ($flight->scheduled_departure_time) {
-                $times['server_scheduled_departure_utc'] = Carbon::parse($flight->scheduled_departure_time)->setTimezone('UTC')->toDateTimeString();
-            }
-            if ($flight->scheduled_arrival_time) {
-                $times['server_scheduled_arrival_utc'] = Carbon::parse($flight->scheduled_arrival_time)->setTimezone('UTC')->toDateTimeString();
-            }
-
-            // client-submitted local/UTC (if present)
-            if ($request->has('scheduled_departure_local')) $times['scheduled_departure_local'] = $request->scheduled_departure_local;
-            if ($request->has('scheduled_departure_utc_client')) $times['scheduled_departure_utc_client'] = $request->scheduled_departure_utc_client;
-            if ($request->has('scheduled_arrival_local')) $times['scheduled_arrival_local'] = $request->scheduled_arrival_local;
-            if ($request->has('scheduled_arrival_utc_client')) $times['scheduled_arrival_utc_client'] = $request->scheduled_arrival_utc_client;
-
-            if (count($times)) {
-                $flight->events()->create([
-                    'event_type' => 'TIME_UPDATE',
-                    'description' => 'Flight created in FIS. Server and client submitted timestamps: ' . json_encode($times),
-                    'new_value' => json_encode($times),
-                    'timestamp' => now(),
-                ]);
-            } else {
-                // If no times to record, still create a TIME_UPDATE event to log flight creation
-                try {
-                    $flight->events()->create([
-                        'event_type' => 'TIME_UPDATE',
-                        'description' => 'Flight created in FIS',
-                        'timestamp' => now(),
-                    ]);
-                } catch (\Exception $e) {
-                    // Non-blocking: log if needed, but do not fail creation
-                    Log::warning('Failed to create TIME_UPDATE event for flight creation', ['error' => $e->getMessage()]);
-                }
-            }
+            $flight->events()->create([
+                'event_type' => 'TIME_UPDATE',
+                'description' => 'Flight created in FIS',
+                'timestamp' => now(),
+            ]);
         } catch (\Exception $e) {
-            // ignore non-fatal event recording errors
+            // Non-blocking: ignore event recording errors to prevent flight creation failure
         }
 
         // Record computed flight hours in the TIME_UPDATE event description (flight_hours is not a valid enum)

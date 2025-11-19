@@ -183,9 +183,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
 
     // Local banner for server/network errors (non-validation, e.g. 5xx or network failures)
     const [serverError, setServerError] = React.useState<string | null>(null);
-    // Store the last submit payload and server response for in-UI debugging
-    const [lastSubmitPayload, setLastSubmitPayload] = React.useState<any | null>(null);
-    const [lastServerResponse, setLastServerResponse] = React.useState<any | null>(null);
 
     // Keep form in sync when `initialData` changes (so edit modal shows current values)
     React.useEffect(() => {
@@ -272,6 +269,12 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Prevent double submission
+        if (form.processing) {
+            return;
+        }
+        
         const submitData: any = { ...form.data };
         
         // Remove empty aircraft_icao_code if it's an empty string (but keep null for explicit nulls)
@@ -318,7 +321,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                             submitData.fk_id_gate_code = `${String(terminalId)}-${String(code)}`;
                         } else {
                             // If we can't construct a valid code, don't send it (let validation fail clearly)
-                            console.warn('Gate found but missing required fields for id_gate_code construction:', gate);
                             // Don't set fk_id_gate_code - let backend validation handle it
                         }
                     }
@@ -336,11 +338,9 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                     }
                 } else {
                     // Gate not found - don't send invalid data
-                    console.warn('Gate not found for id:', submitData.gate_id, 'Available gates:', gates.map((g: any) => ({ id: g.id, id_gate_code: g.id_gate_code })));
                     // Don't set fk_id_gate_code - let backend validation handle it
                 }
             } catch (e) {
-                console.error('Error mapping gate_id to fk_id_gate_code:', e);
                 // Don't set fk_id_gate_code on error - let backend validation handle it
             }
             delete submitData.gate_id;
@@ -376,7 +376,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                             submitData.fk_id_belt_code = `${String(terminalId)}-${String(code)}`;
                         } else {
                             // If we can't construct a valid code, don't send it (let validation fail clearly)
-                            console.warn('Belt found but missing required fields for id_belt_code construction:', belt);
                             // Don't set fk_id_belt_code - let backend validation handle it
                         }
                     }
@@ -396,11 +395,9 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                     }
                 } else {
                     // Belt not found - don't send invalid data
-                    console.warn('Belt not found for id:', submitData.baggage_belt_id, 'Available belts:', belts.map((b: any) => ({ id: b.id, id_belt_code: b.id_belt_code })));
                     // Don't set fk_id_belt_code - let backend validation handle it
                 }
             } catch (e) {
-                console.error('Error mapping baggage_belt_id to fk_id_belt_code:', e);
                 // Don't set fk_id_belt_code on error - let backend validation handle it
             }
             delete submitData.baggage_belt_id;
@@ -448,43 +445,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
 
         // datetime-local inputs are interpreted in the user's browser timezone.
         // We send the raw value and the timezone info, and the backend will convert to UTC.
-        // Include client-derived UTC timestamps for debugging (backend is authoritative).
-        if (submitData.scheduled_departure_time) {
-            try {
-                // Store the local time string as submitted
-                submitData.scheduled_departure_local = submitData.scheduled_departure_time;
-                // Calculate UTC from the local time in the departure timezone
-                // Note: This is for debugging - backend conversion is authoritative
-                const depTz = submitData.departure_tz || userTz;
-                try {
-                    // Try to parse in the departure timezone and convert to UTC
-                    const localDate = new Date(submitData.scheduled_departure_time);
-                    // datetime-local gives us a date in local browser timezone
-                    // We'll let the backend handle the conversion using departure_tz
-                    submitData.scheduled_departure_utc_client = localDate.toISOString();
-                } catch (e) {
-                    // If conversion fails, backend will handle it
-                }
-            } catch (e) {
-                // ignore conversion errors - backend will handle validation
-            }
-        }
-        if (submitData.scheduled_arrival_time) {
-            try {
-                // Store the local time string as submitted
-                submitData.scheduled_arrival_local = submitData.scheduled_arrival_time;
-                // Calculate UTC from the local time in the arrival timezone
-                const arrTz = submitData.arrival_tz || userTz;
-                try {
-                    const localDate = new Date(submitData.scheduled_arrival_time);
-                    submitData.scheduled_arrival_utc_client = localDate.toISOString();
-                } catch (e) {
-                    // If conversion fails, backend will handle it
-                }
-            } catch (e) {
-                // ignore conversion errors - backend will handle validation
-            }
-        }
 
         // If editing (initialData has an id) use PUT to update the flight; otherwise POST to create.
         if (initialData && initialData.id) {
@@ -503,8 +463,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                     setServerError(null);
                     onOpenChange(false);
                     (form as any).reset();
-                    setLastSubmitPayload(null);
-                    setLastServerResponse(null);
                 },
                 onError: (errors: any) => {
                     try {
@@ -513,25 +471,13 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                             (form as any).setErrors(errors);
                         }
                     } catch (e) {
-                        console.error('Error setting form errors:', e);
-                    }
-                    
-                    try { 
-                        setLastServerResponse(errors || null); 
-                    } catch (e) { 
-                        console.error('Error setting last server response:', e);
+                        // Silently handle error setting
                     }
                     
                     // If there were no validation errors returned (empty / falsy), show
                     // a generic server error banner so the user knows something went wrong.
                     if (!errors || Object.keys(errors).length === 0) {
-                        setServerError('Server error or network failure occurred. Check the browser console or server logs for details.');
-                    }
-                    
-                    try { 
-                        console.error('Flight update errors:', errors); 
-                    } catch (e) { 
-                        // no-op
+                        setServerError('An error occurred while updating the flight. Please try again.');
                     }
                 },
                 onFinish: () => {
@@ -562,23 +508,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                 }
             }
 
-            // Save payload to state and log it so we can inspect what is being sent when server rejects values
-            try { 
-                setLastSubmitPayload({ 
-                    payload: submitData, 
-                    gates: options.gates, 
-                    baggageBelts: options.baggageBelts,
-                    aircraft: options.aircraft,
-                    formData: form.data // Include original form data for debugging
-                }); 
-            } catch (e) { /* no-op */ }
-            try { console.debug('Flight submit payload', submitData, { 
-                gates: options.gates, 
-                baggageBelts: options.baggageBelts,
-                aircraft: options.aircraft,
-                formData: form.data
-            }); } catch (e) { }
-            
             // Clear any previous errors before submitting
             try {
                 (form as any).setErrors({});
@@ -602,8 +531,6 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                     setServerError(null);
                     onOpenChange(false);
                     (form as any).reset();
-                    setLastSubmitPayload(null);
-                    setLastServerResponse(null);
                 },
                 onError: (errors: any) => {
                     try {
@@ -612,23 +539,11 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                             (form as any).setErrors(errors);
                         }
                     } catch (e) {
-                        console.error('Error setting form errors:', e);
-                    }
-                    
-                    try { 
-                        setLastServerResponse(errors || null); 
-                    } catch (e) { 
-                        console.error('Error setting last server response:', e);
+                        // Silently handle error setting
                     }
                     
                     if (!errors || Object.keys(errors).length === 0) {
-                        setServerError('Server error or network failure occurred. Check the browser console or server logs for details.');
-                    }
-                    
-                    try { 
-                        console.error('Flight create errors:', errors); 
-                    } catch (e) { 
-                        // no-op
+                        setServerError('An error occurred while creating the flight. Please try again.');
                     }
                 },
                 onFinish: () => {
@@ -652,7 +567,7 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
         }}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative">
                 {form.processing && (
-                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+                    <div className="absolute inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg pointer-events-auto">
                         <div className="flex flex-col items-center gap-3">
                             <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
@@ -667,39 +582,32 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                         <DialogDescription>
                             {initialData?.id ? 'Update flight details' : 'Add a new flight to the FIS system.'}
                         </DialogDescription>
-                        {/* Simple debug area to surface server validation errors for troubleshooting */}
+                        {/* Validation errors display */}
                         {Object.keys((form as any).errors || {}).length > 0 && (
-                            <div className="mt-2 p-2 bg-destructive/10 text-destructive text-xs rounded">
-                                <div className="font-medium">Server validation errors:</div>
-                                <pre className="whitespace-pre-wrap max-h-32 overflow-auto text-xs mt-1">{JSON.stringify((form as any).errors, null, 2)}</pre>
+                            <div className="mt-2 p-3 bg-destructive/10 text-destructive text-sm rounded border border-destructive/20">
+                                <div className="font-medium mb-2">Please correct the following errors:</div>
+                                <ul className="list-disc list-inside space-y-1 text-xs">
+                                    {Object.entries((form as any).errors || {}).map(([field, message]: [string, any]) => (
+                                        <li key={field}>
+                                            <span className="font-medium">{field}:</span> {Array.isArray(message) ? message[0] : message}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
 
                         {/* Non-validation server/network error banner (dismissible) */}
                         {serverError && (
-                            <div className="mt-2 p-2 bg-yellow-50 text-yellow-800 text-sm rounded flex justify-between items-start">
+                            <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-sm rounded border border-yellow-200 dark:border-yellow-800 flex justify-between items-start">
                                 <div className="pr-4">{serverError}</div>
-                                <div>
-                                    <button type="button" aria-label="Dismiss server error" className="text-yellow-700 underline text-xs" onClick={() => setServerError(null)}>Dismiss</button>
-                                </div>
-                            </div>
-                        )}
-                        {/* Debug: show last submit payload and server response (if present) */}
-                        {lastSubmitPayload && (
-                            <div className="mt-2 p-2 bg-muted/5 text-muted-foreground text-xs rounded">
-                                <div className="flex justify-between items-center">
-                                    <div className="font-medium">Last submit payload (click dismiss to hide)</div>
-                                    <div>
-                                        <button type="button" className="text-xs underline" onClick={() => setLastSubmitPayload(null)}>Dismiss</button>
-                                    </div>
-                                </div>
-                                <pre className="whitespace-pre-wrap max-h-48 overflow-auto text-xs mt-2">{JSON.stringify(lastSubmitPayload, null, 2)}</pre>
-                            </div>
-                        )}
-                        {lastServerResponse && (
-                            <div className="mt-2 p-2 bg-destructive/10 text-destructive text-xs rounded">
-                                <div className="font-medium">Last server response:</div>
-                                <pre className="whitespace-pre-wrap max-h-48 overflow-auto text-xs mt-1">{JSON.stringify(lastServerResponse, null, 2)}</pre>
+                                <button 
+                                    type="button" 
+                                    aria-label="Dismiss server error" 
+                                    className="text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 text-xs font-medium" 
+                                    onClick={() => setServerError(null)}
+                                >
+                                    Dismiss
+                                </button>
                             </div>
                         )}
                     </DialogHeader>
