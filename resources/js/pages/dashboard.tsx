@@ -101,13 +101,30 @@ interface SystemAlert {
     count?: number;
 }
 
+interface FlightEvent {
+    id: number;
+    flight_id: number;
+    flight_number: string;
+    event_type: string;
+    old_value?: string | null;
+    new_value?: string | null;
+    timestamp: string | null;
+    description?: string | null;
+    airline?: string;
+    origin?: string;
+    destination?: string;
+    status?: string;
+    status_code?: string;
+}
+
 interface DashboardProps {
     stats?: DashboardStats;
     activeFlights?: DashboardFlight[];
     systemAlerts?: SystemAlert[];
+    recentEvents?: FlightEvent[];
 }
 
-export default function Dashboard({ stats, activeFlights = [], systemAlerts = [] }: DashboardProps) {
+export default function Dashboard({ stats, activeFlights = [], systemAlerts = [], recentEvents = [] }: DashboardProps) {
     // Default stats if not provided
     const dashboardStats = stats || {
         totalFlights: 0,
@@ -285,7 +302,7 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                                     <div>
                                         <CardTitle className="text-xl">Flight Schedules</CardTitle>
                                         <CardDescription className="text-sm mt-1">
-                                            All active flights in the system ({activeFlights.length} total)
+                                            Next 5 upcoming flights (showing {activeFlights.length} of {dashboardStats.totalFlights} total flights)
                                         </CardDescription>
                                     </div>
                                 </div>
@@ -297,20 +314,20 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                             </div>
                         </CardHeader>
                         <CardContent className="pt-6 p-0">
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                            <TableHead className="font-semibold text-center w-24">Flight #</TableHead>
-                                            <TableHead className="font-semibold text-center w-32">Route</TableHead>
-                                            <TableHead className="font-semibold text-center w-28">Airline</TableHead>
-                                            <TableHead className="font-semibold text-center w-28">Aircraft</TableHead>
-                                            <TableHead className="font-semibold text-center w-24">Terminal</TableHead>
-                                            <TableHead className="font-semibold text-center w-20">Gate</TableHead>
-                                            <TableHead className="font-semibold text-center w-20">Belt</TableHead>
-                                            <TableHead className="font-semibold text-center w-28">Departure</TableHead>
-                                            <TableHead className="font-semibold text-center w-28">Arrival</TableHead>
-                                            <TableHead className="font-semibold text-center w-24">Status</TableHead>
+                                        <TableRow className="bg-gradient-to-r from-slate-100 to-blue-100 dark:from-slate-800 dark:to-blue-900/30">
+                                            <TableHead className="font-bold text-center w-24 text-slate-900 dark:text-slate-100 py-4">Flight #</TableHead>
+                                            <TableHead className="font-bold text-center w-32 text-slate-900 dark:text-slate-100 py-4">Route</TableHead>
+                                            <TableHead className="font-bold text-center w-28 text-slate-900 dark:text-slate-100 py-4">Airline</TableHead>
+                                            <TableHead className="font-bold text-center w-28 text-slate-900 dark:text-slate-100 py-4">Aircraft</TableHead>
+                                            <TableHead className="font-bold text-center w-24 text-slate-900 dark:text-slate-100 py-4">Terminal</TableHead>
+                                            <TableHead className="font-bold text-center w-20 text-slate-900 dark:text-slate-100 py-4">Gate</TableHead>
+                                            <TableHead className="font-bold text-center w-20 text-slate-900 dark:text-slate-100 py-4">Belt</TableHead>
+                                            <TableHead className="font-bold text-center w-28 text-slate-900 dark:text-slate-100 py-4">Departure</TableHead>
+                                            <TableHead className="font-bold text-center w-28 text-slate-900 dark:text-slate-100 py-4">Arrival</TableHead>
+                                            <TableHead className="font-bold text-center w-24 text-slate-900 dark:text-slate-100 py-4">Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -460,31 +477,132 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                 </Card>
 
                 {/* Recent Activity */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Recent Activity</CardTitle>
-                        <CardDescription>Latest flight updates and changes</CardDescription>
+                <Card className="shadow-lg">
+                    <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900/50 dark:to-blue-950/20 border-b">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-xl">Recent Activity</CardTitle>
+                                <CardDescription className="text-sm mt-1">Latest flight updates and status changes</CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        {activeFlights.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-4">No recent flight activity</p>
+                    <CardContent className="pt-6">
+                        {recentEvents.length === 0 && activeFlights.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-8">No recent flight activity</p>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {activeFlights.slice(0, 6).map((flight) => {
-                                    const statusColors = {
-                                        'BRD': 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20',
-                                        'DLY': 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20',
-                                        'SCH': 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20',
-                                        'CNX': 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20',
-                                        'DEP': 'bg-green-600/10 border-green-600/30 hover:bg-green-600/20',
-                                        'ARR': 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20',
+                                {recentEvents.length > 0 ? recentEvents.map((event) => {
+                                    const eventTypeColors: Record<string, string> = {
+                                        'STATUS_CHANGE': 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20',
+                                        'GATE_CHANGE': 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20',
+                                        'TIME_UPDATE': 'bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20',
+                                        'CLAIM_CHANGE': 'bg-indigo-500/10 border-indigo-500/30 hover:bg-indigo-500/20',
+                                        'AIRCRAFT_CHANGE': 'bg-cyan-500/10 border-cyan-500/30 hover:bg-cyan-500/20',
+                                        'CANCELLATION': 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20',
+                                        'DELAY': 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20',
+                                        'BOARDING_START': 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20',
                                     };
-                                    const cardColor = statusColors[flight.status_code as keyof typeof statusColors] || 'bg-gray-500/10 border-gray-500/30 hover:bg-gray-500/20';
+                                    
+                                    const eventTypeLabels: Record<string, { label: string; icon: string }> = {
+                                        'STATUS_CHANGE': { label: 'Status Changed', icon: '🔄' },
+                                        'GATE_CHANGE': { label: 'Gate Changed', icon: '🚪' },
+                                        'TIME_UPDATE': { label: 'Time Updated', icon: '⏰' },
+                                        'CLAIM_CHANGE': { label: 'Baggage Belt Changed', icon: '🎒' },
+                                        'AIRCRAFT_CHANGE': { label: 'Aircraft Changed', icon: '✈️' },
+                                        'CANCELLATION': { label: 'Cancelled', icon: '❌' },
+                                        'DELAY': { label: 'Delayed', icon: '⏱️' },
+                                        'BOARDING_START': { label: 'Boarding Started', icon: '👥' },
+                                    };
+                                    
+                                    const cardColor = eventTypeColors[event.event_type] || 'bg-gray-500/10 border-gray-500/30 hover:bg-gray-500/20';
+                                    const eventInfo = eventTypeLabels[event.event_type] || { label: 'Updated', icon: '📝' };
+                                    const statusCode = event.status_code || 'SCH';
                                     
                                     return (
-                                        <div key={flight.id} className={`p-4 rounded-lg border transition-all cursor-pointer ${cardColor}`}>
+                                        <div key={event.id} className={`p-5 rounded-xl border-2 transition-all hover:shadow-md ${cardColor}`}>
                                             <div className="flex items-start gap-3 mb-3">
-                                                <div className={`h-3 w-3 rounded-full shrink-0 mt-1 ${
+                                                <div className={`h-4 w-4 rounded-full shrink-0 mt-1 ${
+                                                    statusCode === 'BRD' ? 'bg-green-500' :
+                                                    statusCode === 'DLY' ? 'bg-orange-500' :
+                                                    statusCode === 'SCH' ? 'bg-blue-500' :
+                                                    statusCode === 'CNX' ? 'bg-red-500' :
+                                                    statusCode === 'DEP' ? 'bg-green-600' :
+                                                    statusCode === 'ARR' ? 'bg-purple-500' :
+                                                    'bg-gray-500'
+                                                }`} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="font-bold text-lg">{event.flight_number}</span>
+                                                        {event.status && (
+                                                            <Badge className={cn(getStatusBadgeColor(statusCode), "text-xs font-semibold")} variant="outline">
+                                                                {event.status}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 mb-2">
+                                                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                                            {eventInfo.icon} {eventInfo.label}
+                                                        </span>
+                                                    </div>
+                                                    {event.airline && (
+                                                        <p className="text-xs text-muted-foreground truncate font-medium">{event.airline}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2.5 text-sm">
+                                                {event.origin && event.destination && (
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                        <span className="font-semibold truncate">{event.origin} → {event.destination}</span>
+                                                    </div>
+                                                )}
+                                                {event.old_value && event.new_value && (
+                                                    <div className="text-xs bg-muted/50 p-2 rounded border border-muted">
+                                                        <span className="text-muted-foreground line-through">{event.old_value}</span>
+                                                        <span className="mx-2">→</span>
+                                                        <span className="font-semibold">{event.new_value}</span>
+                                                    </div>
+                                                )}
+                                                {event.description && (
+                                                    <p className="text-xs text-muted-foreground italic">{event.description}</p>
+                                                )}
+                                                {event.timestamp && (
+                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t border-muted/50">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        <span>{format(new Date(event.timestamp), 'MMM dd, yyyy HH:mm')}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                }) : activeFlights.slice(0, 6).map((flight) => {
+                                    const statusColors = {
+                                        'BRD': 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:shadow-md',
+                                        'DLY': 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20 hover:shadow-md',
+                                        'SCH': 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 hover:shadow-md',
+                                        'CNX': 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 hover:shadow-md',
+                                        'DEP': 'bg-green-600/10 border-green-600/30 hover:bg-green-600/20 hover:shadow-md',
+                                        'ARR': 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 hover:shadow-md',
+                                    };
+                                    const cardColor = statusColors[flight.status_code as keyof typeof statusColors] || 'bg-gray-500/10 border-gray-500/30 hover:bg-gray-500/20 hover:shadow-md';
+                                    
+                                    const eventLabels = {
+                                        'BRD': { label: 'Boarding', icon: '✈️', color: 'text-green-600 dark:text-green-400' },
+                                        'DLY': { label: 'Delayed', icon: '⏱️', color: 'text-orange-600 dark:text-orange-400' },
+                                        'SCH': { label: 'Scheduled', icon: '📅', color: 'text-blue-600 dark:text-blue-400' },
+                                        'CNX': { label: 'Cancelled', icon: '❌', color: 'text-red-600 dark:text-red-400' },
+                                        'DEP': { label: 'Departed', icon: '🛫', color: 'text-green-600 dark:text-green-400' },
+                                        'ARR': { label: 'Arrived', icon: '🛬', color: 'text-purple-600 dark:text-purple-400' },
+                                    };
+                                    const eventInfo = eventLabels[flight.status_code as keyof typeof eventLabels] || { label: 'Updated', icon: '📝', color: 'text-gray-600 dark:text-gray-400' };
+                                    
+                                    return (
+                                        <div key={flight.id} className={`p-5 rounded-xl border-2 transition-all hover:shadow-md ${cardColor}`}>
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className={`h-4 w-4 rounded-full shrink-0 mt-1 ${
                                                     flight.status_code === 'BRD' ? 'bg-green-500' :
                                                     flight.status_code === 'DLY' ? 'bg-orange-500' :
                                                     flight.status_code === 'SCH' ? 'bg-blue-500' :
@@ -494,30 +612,39 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                                                     'bg-gray-500'
                                                 }`} />
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="font-bold text-base">{flight.flight_number}</span>
-                                                        <Badge className={cn(getStatusBadgeColor(flight.status_code), "text-xs")} variant="outline">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="font-bold text-lg">{flight.flight_number}</span>
+                                                        <Badge className={cn(getStatusBadgeColor(flight.status_code), "text-xs font-semibold")} variant="outline">
                                                             {flight.status}
                                                         </Badge>
                                                     </div>
+                                                    <div className="flex items-center gap-1.5 mb-2">
+                                                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                                            {eventInfo.icon} {eventInfo.label}
+                                                        </span>
+                                                    </div>
                                                     {flight.airline && (
-                                                        <p className="text-xs text-muted-foreground truncate">{flight.airline}</p>
+                                                        <p className="text-xs text-muted-foreground truncate font-medium">{flight.airline}</p>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex items-center gap-1.5">
-                                                    <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                                    <span className="font-medium truncate">{flight.origin} → {flight.destination}</span>
+                                            <div className="space-y-2.5 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                    <span className="font-semibold truncate">{flight.origin} → {flight.destination}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                                    <span>{formatTime(flight.scheduled_departure)}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                    <span className="font-medium">Dep: {formatTime(flight.scheduled_departure)}</span>
+                                                    {flight.scheduled_arrival && (
+                                                        <span className="text-muted-foreground">• Arr: {formatTime(flight.scheduled_arrival)}</span>
+                                                    )}
                                                 </div>
-                                                {(flight.gate || flight.terminal) && (
-                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                        {flight.terminal && <span>Terminal: {flight.terminal}</span>}
+                                                {(flight.gate || flight.terminal || flight.baggage_belt) && (
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-muted/50">
+                                                        {flight.terminal && <span className="font-medium">Terminal: {flight.terminal}</span>}
                                                         {flight.gate && <span>• Gate: {flight.gate}</span>}
+                                                        {flight.baggage_belt && <span>• Belt: {flight.baggage_belt}</span>}
                                                     </div>
                                                 )}
                                             </div>

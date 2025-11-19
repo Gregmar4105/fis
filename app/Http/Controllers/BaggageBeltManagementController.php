@@ -36,15 +36,13 @@ class BaggageBeltManagementController extends Controller
             ->paginate($perPage)
             ->withQueryString()
             ->through(function ($belt) {
-            // Get current arrivals for this baggage belt
-            $currentArrivals = $belt->arrivals()
-                ->whereHas('flight', function ($q) {
-                    $q->whereBetween('scheduled_arrival_time', [
-                        now()->startOfDay(),
-                        now()->addDay()->endOfDay()
-                    ]);
-                })
-                ->with(['flight.status', 'flight.airline', 'flight.origin'])
+            // Get current flights for this baggage belt (using flights table directly)
+            $currentFlights = \App\Models\Flight::where('fk_id_belt_code', $belt->id_belt_code)
+                ->whereBetween('scheduled_arrival_time', [
+                    now()->startOfDay(),
+                    now()->addDay()->endOfDay()
+                ])
+                ->with(['status', 'airline', 'origin'])
                 ->get();
 
             return [
@@ -57,16 +55,16 @@ class BaggageBeltManagementController extends Controller
                     'name' => $belt->terminal->name,
                     'airport' => $belt->terminal->airport->iata_code,
                 ],
-                'current_flights' => $currentArrivals->map(function ($arrival) {
+                'current_flights' => $currentFlights->map(function ($flight) {
                     return [
-                        'flight_number' => $arrival->flight->flight_number,
-                        'airline' => $arrival->flight->airline?->airline_name ?? 'N/A',
-                        'origin' => $arrival->flight->origin?->iata_code ?? 'N/A',
-                        'status' => $arrival->flight->status?->status_name ?? 'N/A',
-                        'scheduled_arrival' => $arrival->flight->scheduled_arrival_time?->format('H:i') ?? 'N/A',
+                        'flight_number' => $flight->flight_number,
+                        'airline' => $flight->airline?->airline_name ?? 'N/A',
+                        'origin' => $flight->origin?->iata_code ?? 'N/A',
+                        'status' => $flight->status?->status_name ?? 'N/A',
+                        'scheduled_arrival' => $flight->scheduled_arrival_time?->format('H:i') ?? 'N/A',
                     ];
                 }),
-                'is_active' => $currentArrivals->isNotEmpty(),
+                'is_active' => $currentFlights->isNotEmpty(),
             ];
         });
 
@@ -129,13 +127,13 @@ class BaggageBeltManagementController extends Controller
     public function destroy(BaggageBelt $baggageBelt)
     {
         // Check if baggage belt has active flights
-        if ($baggageBelt->arrivals()->whereHas('flight', function ($query) {
-            $query->whereIn('status_id', function ($q) {
-                $q->select('id')
-                    ->from('flight_status')
-                    ->whereIn('status_code', ['SCH', 'BRD', 'ARR']);
-            });
-        })->exists()) {
+        $statusCodes = \App\Models\FlightStatus::whereIn('status_code', ['SCH', 'BRD', 'ARR'])
+            ->pluck('id_status_code')
+            ->toArray();
+        
+        if (\App\Models\Flight::where('fk_id_belt_code', $baggageBelt->id_belt_code)
+            ->whereIn('fk_id_status_code', $statusCodes)
+            ->exists()) {
             return redirect()->back()->with('error', 'Cannot delete baggage belt with active flights.');
         }
 

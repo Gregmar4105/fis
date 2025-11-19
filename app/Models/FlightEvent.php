@@ -33,6 +33,7 @@ class FlightEvent extends Model
     protected $fillable = [
         'flight_id',
         'event_type',
+        'description',
         'old_value',
         'new_value',
         'old_fk_id',

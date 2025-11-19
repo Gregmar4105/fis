@@ -34,29 +34,38 @@ class GateManagementController extends Controller
 
         if ($request->filled('status')) {
             $status = $request->string('status');
-            $query->{$status === 'occupied' ? 'whereHas' : 'whereDoesntHave'}('departures', function ($q) {
-                $q->whereHas('flight', function ($flightQuery) {
-                    $flightQuery->whereBetween('scheduled_departure_time', [
-                        now()->startOfDay(),
-                        now()->addDay()->endOfDay(),
-                    ]);
-                });
-            });
+            if ($status === 'occupied') {
+                $occupiedGateIds = \App\Models\Flight::whereBetween('scheduled_departure_time', [
+                    now()->startOfDay(),
+                    now()->addDay()->endOfDay(),
+                ])
+                ->whereNotNull('fk_id_gate_code')
+                ->pluck('fk_id_gate_code')
+                ->toArray();
+                $query->whereIn('id_gate_code', $occupiedGateIds);
+            } else {
+                $occupiedGateIds = \App\Models\Flight::whereBetween('scheduled_departure_time', [
+                    now()->startOfDay(),
+                    now()->addDay()->endOfDay(),
+                ])
+                ->whereNotNull('fk_id_gate_code')
+                ->pluck('fk_id_gate_code')
+                ->toArray();
+                $query->whereNotIn('id_gate_code', $occupiedGateIds);
+            }
         }
 
         $gates = $query->orderBy('gate_code')
             ->paginate($perPage)
             ->withQueryString()
             ->through(function ($gate) {
-            // Get current departures for this gate
-            $currentDepartures = $gate->departures()
-                ->whereHas('flight', function ($q) {
-                    $q->whereBetween('scheduled_departure_time', [
-                        now()->startOfDay(),
-                        now()->addDay()->endOfDay()
-                    ]);
-                })
-                ->with(['flight.status', 'flight.airline'])
+            // Get current flights for this gate (using flights table directly)
+            $currentFlights = \App\Models\Flight::where('fk_id_gate_code', $gate->id_gate_code)
+                ->whereBetween('scheduled_departure_time', [
+                    now()->startOfDay(),
+                    now()->addDay()->endOfDay()
+                ])
+                ->with(['status', 'airline'])
                 ->get();
 
             return [
@@ -69,12 +78,12 @@ class GateManagementController extends Controller
                     'name' => $gate->terminal->name,
                     'airport' => $gate->terminal->airport->iata_code,
                 ],
-                'current_flights' => $currentDepartures->map(function ($departure) {
+                'current_flights' => $currentFlights->map(function ($flight) {
                     return [
-                        'flight_number' => $departure->flight->flight_number,
-                        'airline' => $departure->flight->airline?->airline_name ?? 'N/A',
-                        'status' => $departure->flight->status?->status_name ?? 'N/A',
-                        'scheduled_departure' => $departure->flight->scheduled_departure_time->format('H:i'),
+                        'flight_number' => $flight->flight_number,
+                        'airline' => $flight->airline?->airline_name ?? 'N/A',
+                        'status' => $flight->status?->status_name ?? 'N/A',
+                        'scheduled_departure' => $flight->scheduled_departure_time->format('H:i'),
                     ];
                 }),
                 'authorized_airlines' => $gate->authorizedAirlines->map(function ($airline) {
@@ -83,7 +92,9 @@ class GateManagementController extends Controller
                         'name' => $airline->airline_name,
                     ];
                 }),
-                'is_occupied' => $currentDepartures->where('flight.status.status_code', 'BRD')->isNotEmpty(),
+                'is_occupied' => $currentFlights->filter(function ($flight) {
+                    return $flight->status && $flight->status->status_code === 'BRD';
+                })->isNotEmpty(),
             ];
         });
 
@@ -164,13 +175,13 @@ class GateManagementController extends Controller
     public function destroy(Gate $gate)
     {
         // Check if gate has active flights
-        if ($gate->departures()->whereHas('flight', function ($query) {
-            $query->whereIn('status_id', function ($q) {
-                $q->select('id')
-                    ->from('flight_status')
-                    ->whereIn('status_code', ['SCH', 'BRD', 'DLY']);
-            });
-        })->exists()) {
+        $statusCodes = \App\Models\FlightStatus::whereIn('status_code', ['SCH', 'BRD', 'DLY'])
+            ->pluck('id_status_code')
+            ->toArray();
+        
+        if (\App\Models\Flight::where('fk_id_gate_code', $gate->id_gate_code)
+            ->whereIn('fk_id_status_code', $statusCodes)
+            ->exists()) {
             return redirect()->back()->with('error', 'Cannot delete gate with active flights.');
         }
 

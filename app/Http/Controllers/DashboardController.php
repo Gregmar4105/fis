@@ -73,9 +73,10 @@ class DashboardController extends Controller
             'connections' => $connectionsCount,
         ];
 
-        // Get all active flights (not just 5) for the dashboard table
-        $activeFlights = $baseQuery
-            ->get()
+        // Get all active flights for statistics, but only 5 for display
+        $allFlights = $baseQuery->get();
+        
+        $activeFlights = $allFlights->take(5)
             ->map(function ($flight) {
                 // Use direct terminal if available, otherwise fall back to gate's terminal
                 $terminal = null;
@@ -111,11 +112,36 @@ class DashboardController extends Controller
 
         // Get system alerts (recent critical events)
         $systemAlerts = $this->getSystemAlerts();
+        
+        // Get recent flight events for activity feed
+        $recentEvents = FlightEvent::with(['flight.status', 'flight.airline', 'flight.origin', 'flight.destination'])
+            ->where('timestamp', '>=', now()->subDays(7))
+            ->orderBy('timestamp', 'desc')
+            ->limit(6)
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'flight_id' => $event->flight_id,
+                    'flight_number' => $event->flight?->flight_number ?? 'Unknown',
+                    'event_type' => $event->event_type,
+                    'old_value' => $event->old_value,
+                    'new_value' => $event->new_value,
+                    'timestamp' => $event->timestamp ? Carbon::parse($event->timestamp)->toIso8601String() : null,
+                    'description' => $event->description ?? null,
+                    'airline' => $event->flight?->airline?->airline_name,
+                    'origin' => $event->flight?->origin?->iata_code,
+                    'destination' => $event->flight?->destination?->iata_code,
+                    'status' => $event->flight?->status?->status_name,
+                    'status_code' => $event->flight?->status?->status_code,
+                ];
+            });
 
         return Inertia::render('dashboard', [
             'stats' => $stats,
             'activeFlights' => $activeFlights,
             'systemAlerts' => $systemAlerts,
+            'recentEvents' => $recentEvents,
         ]);
     }
 
