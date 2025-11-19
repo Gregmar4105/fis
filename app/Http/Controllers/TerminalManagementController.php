@@ -17,15 +17,18 @@ class TerminalManagementController extends Controller
     {
         $perPage = $this->resolvePerPage($request->integer('per_page', 10));
 
-        $query = Terminal::with(['airport'])
+        $query = Terminal::with(['airport', 'gates', 'baggageBelts'])
             ->withCount(['gates', 'baggageBelts']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('terminal_code', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
-            });
+            $query->where('terminal_code', 'like', "%{$search}%");
+        }
+        
+        // Filter by alphabet if provided
+        if ($request->filled('letter')) {
+            $letter = $request->string('letter');
+            $query->where('terminal_code', 'like', "{$letter}%");
         }
 
         if ($request->filled('airport')) {
@@ -45,6 +48,7 @@ class TerminalManagementController extends Controller
             'filters' => [
                 'search' => $request->input('search', ''),
                 'airport' => $request->input('airport', ''),
+                'letter' => $request->input('letter', ''),
                 'per_page' => $perPage,
             ],
             'stats' => [
@@ -63,7 +67,6 @@ class TerminalManagementController extends Controller
         $validated = $request->validate([
             'iata_code' => 'required|exists:airports,iata_code',
             'terminal_code' => 'required|string|max:10',
-            'name' => 'nullable|string|max:255',
         ]);
 
         Terminal::create($validated);
@@ -78,7 +81,6 @@ class TerminalManagementController extends Controller
     {
         $validated = $request->validate([
             'terminal_code' => 'sometimes|string|max:10',
-            'name' => 'nullable|string|max:255',
             'iata_code' => 'sometimes|exists:airports,iata_code',
         ]);
 

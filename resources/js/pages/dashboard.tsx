@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { connections } from '@/routes/flights';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
     PlaneTakeoff, 
@@ -453,53 +454,61 @@ export default function Dashboard({ stats, activeFlights = [], systemAlerts = []
                         {activeFlights.length === 0 ? (
                             <p className="text-muted-foreground text-center py-4">No recent flight activity</p>
                         ) : (
-                            <div className="space-y-3">
-                                {activeFlights.slice(0, 5).map((flight) => (
-                                    <div key={flight.id} className="flex items-start gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1.5 ${
-                                            flight.status_code === 'BRD' ? 'bg-green-500' :
-                                            flight.status_code === 'DLY' ? 'bg-orange-500' :
-                                            flight.status_code === 'SCH' ? 'bg-blue-500' :
-                                            flight.status_code === 'CNX' ? 'bg-red-500' :
-                                            flight.status_code === 'DEP' ? 'bg-green-600' :
-                                            flight.status_code === 'ARR' ? 'bg-purple-500' :
-                                            'bg-gray-500'
-                                        }`} />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="font-bold text-base">{flight.flight_number}</span>
-                                                <Badge className={getStatusBadgeColor(flight.status_code)} variant="outline" className="text-xs">
-                                                    {flight.status}
-                                                </Badge>
-                                                {flight.airline && (
-                                                    <span className="text-xs text-muted-foreground">• {flight.airline}</span>
-                                                )}
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {activeFlights.slice(0, 6).map((flight) => {
+                                    const statusColors = {
+                                        'BRD': 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20',
+                                        'DLY': 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20',
+                                        'SCH': 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20',
+                                        'CNX': 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20',
+                                        'DEP': 'bg-green-600/10 border-green-600/30 hover:bg-green-600/20',
+                                        'ARR': 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20',
+                                    };
+                                    const cardColor = statusColors[flight.status_code as keyof typeof statusColors] || 'bg-gray-500/10 border-gray-500/30 hover:bg-gray-500/20';
+                                    
+                                    return (
+                                        <div key={flight.id} className={`p-4 rounded-lg border transition-all cursor-pointer ${cardColor}`}>
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className={`h-3 w-3 rounded-full shrink-0 mt-1 ${
+                                                    flight.status_code === 'BRD' ? 'bg-green-500' :
+                                                    flight.status_code === 'DLY' ? 'bg-orange-500' :
+                                                    flight.status_code === 'SCH' ? 'bg-blue-500' :
+                                                    flight.status_code === 'CNX' ? 'bg-red-500' :
+                                                    flight.status_code === 'DEP' ? 'bg-green-600' :
+                                                    flight.status_code === 'ARR' ? 'bg-purple-500' :
+                                                    'bg-gray-500'
+                                                }`} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="font-bold text-base">{flight.flight_number}</span>
+                                                        <Badge className={cn(getStatusBadgeColor(flight.status_code), "text-xs")} variant="outline">
+                                                            {flight.status}
+                                                        </Badge>
+                                                    </div>
+                                                    {flight.airline && (
+                                                        <p className="text-xs text-muted-foreground truncate">{flight.airline}</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-4 text-sm">
+                                            <div className="space-y-2 text-sm">
                                                 <div className="flex items-center gap-1.5">
-                                                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                                                    <span className="font-medium">{flight.origin} → {flight.destination}</span>
+                                                    <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                    <span className="font-medium truncate">{flight.origin} → {flight.destination}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
-                                                    <Clock className="w-4 h-4 text-muted-foreground" />
+                                                    <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                                                     <span>{formatTime(flight.scheduled_departure)}</span>
                                                 </div>
-                                                {flight.gate && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-muted-foreground">Gate:</span>
-                                                        <span className="font-medium">{flight.gate}</span>
-                                                    </div>
-                                                )}
-                                                {flight.terminal && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-muted-foreground">Terminal:</span>
-                                                        <span className="font-medium">{flight.terminal}</span>
+                                                {(flight.gate || flight.terminal) && (
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        {flight.terminal && <span>Terminal: {flight.terminal}</span>}
+                                                        {flight.gate && <span>• Gate: {flight.gate}</span>}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </CardContent>

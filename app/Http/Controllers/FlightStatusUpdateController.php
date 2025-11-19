@@ -39,70 +39,66 @@ class FlightStatusUpdateController extends Controller
      */
     public function index(Request $request): Response
     {
-        // Get flights with pagination
-        $flights = Flight::with([
+        $query = Flight::with([
             'status',
             'airline',
             'origin',
             'destination',
             'gate.terminal',
-            'baggageBelt'
-        ])
-            ->orderBy('scheduled_departure_time', 'desc')
-            ->paginate(10)
-            ->through(function ($flight) {
-                return [
-                    'id' => $flight->id,
-                    'flight_number' => $flight->flight_number,
-                    'airline' => $flight->airline?->airline_name,
-                    'route' => "{$flight->origin?->iata_code} → {$flight->destination?->iata_code}",
-                    'scheduled_departure' => $flight->scheduled_departure_time->format('Y-m-d H:i'),
-                    'status' => [
-                        'id' => $flight->status_id,
-                        'code' => $flight->status?->status_code,
-                        'name' => $flight->status?->status_name,
-                    ],
-                    'gate' => [
-                        'id' => $flight->gate_id,
-                        'code' => $flight->gate?->gate_code,
-                        'terminal' => $flight->gate?->terminal?->name ?? $flight->gate?->terminal?->terminal_code,
-                    ],
-                    'baggage_belt' => [
-                        'id' => $flight->baggageBelt?->id,
-                        'code' => $flight->baggageBelt?->belt_code,
-                        'status' => $flight->baggageBelt?->status,
-                    ],
-                ];
-            })
-            ->withQueryString();
+            'gate.terminal.airport',
+            'baggageBelt.terminal',
+            'baggageBelt.terminal.airport',
+            'aircraft',
+            'terminalDirect',
+            'terminalDirect.airport',
+        ]);
 
-        // Get available options
-        $statuses = FlightStatus::all(['id', 'status_code', 'status_name'])->map(function ($status) {
-            return [
-                'id' => $status->id,
-                'code' => $status->status_code,
-                'name' => $status->status_name,
-            ];
-        });
-        $gates = Gate::with('terminal')->get()->map(function ($gate) {
-            return [
-                'id' => $gate->id,
-                'code' => $gate->gate_code,
-                'terminal' => $gate->terminal?->name ?? $gate->terminal?->terminal_code,
-                'display' => ($gate->terminal?->terminal_code ?? '') . '-' . $gate->gate_code,
-            ];
-        });
-        $baggageBelts = BaggageBelt::with('terminal')->get()->map(function ($belt) {
-            return [
-                'id' => $belt->id,
-                'code' => $belt->belt_code,
-                'status' => $belt->status,
-                'terminal' => $belt->terminal?->name ?? $belt->terminal?->terminal_code,
-            ];
-        });
+        // Search functionality
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('flight_number', 'like', "%{$search}%")
+                  ->orWhere('airline_code', 'like', "%{$search}%")
+                  ->orWhere('origin_code', 'like', "%{$search}%")
+                  ->orWhere('destination_code', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by status
+        if ($request->has('status') && $request->status && $request->status !== 'all') {
+            $query->where('fk_id_status_code', $request->status);
+        }
+
+        // Filter by date range
+        if ($request->has('date_from')) {
+            $query->whereDate('scheduled_departure_time', '>=', $request->date_from);
+        }
+        if ($request->has('date_to')) {
+            $query->whereDate('scheduled_departure_time', '<=', $request->date_to);
+        }
+
+        // Order by scheduled departure time
+        $query->orderBy('scheduled_departure_time', $request->get('order', 'desc'));
+
+        $flights = $query->paginate(10)->through(function ($flight) {
+            // Use direct terminal if available, otherwise fall back to gate's terminal
+            if (!$flight->terminalDirect && $flight->gate && $flight->gate->terminal) {
+                $flight->terminal = $flight->gate->terminal;
+            } elseif ($flight->terminalDirect) {
+                $flight->terminal = $flight->terminalDirect;
+            }
+            
+            return $flight;
+        })->withQueryString();
+
+        // Get available options - optimized
+        $statuses = FlightStatus::all(['id', 'id_status_code', 'status_code', 'status_name']);
+        $gates = Gate::with(['terminal', 'terminal.airport'])->get();
+        $baggageBelts = BaggageBelt::with(['terminal', 'terminal.airport'])->get();
 
         return Inertia::render('flights/status-update', [
             'flights' => $flights,
+            'filters' => $request->only(['search', 'status', 'date_from', 'date_to', 'order']),
             'options' => [
                 'statuses' => $statuses,
                 'gates' => $gates,
@@ -117,12 +113,20 @@ class FlightStatusUpdateController extends Controller
     public function updateStatus(Request $request, Flight $flight)
     {
         $validated = $request->validate([
-            'status_id' => 'required|exists:flight_status,id',
+            'status_id' => 'required',
             'reason' => 'nullable|string|max:500',
         ]);
 
         $oldStatus = $flight->status;
-        $newStatus = FlightStatus::find($validated['status_id']);
+        // Try to find by id_status_code first, then by id
+        $newStatus = FlightStatus::where('id_status_code', $validated['status_id'])
+            ->orWhere('id', $validated['status_id'])
+            ->first();
+        
+        if (!$newStatus) {
+            return redirect()->back()->withErrors(['status_id' => 'Invalid status selected.']);
+        }
+        
         $flight->update(['fk_id_status_code' => $newStatus->id_status_code]);
 
         // Log the status change event

@@ -32,13 +32,21 @@ type InitialData = Partial<{
     scheduled_arrival_time: string | null;
     status_id: number | string;
     // backend may provide richer status objects with canonical codes
-    status?: { id?: number; id_status_code?: string; };
+    status?: { id?: number; id_status_code?: string; status_code?: string; status_name?: string; };
     // legacy or canonical string code at top-level
     fk_id_status_code?: string;
     gate_id?: string | number;
     baggage_belt_id?: string | number;
     origin_terminal_id?: string | number;
     destination_terminal_id?: string | number;
+    // Relationships that may be loaded
+    gate?: { id: number; gate_code?: string; terminal?: { id: number; terminal_code?: string; name?: string; }; };
+    baggageBelt?: { id: number; belt_code?: string; terminal?: { id: number; terminal_code?: string; name?: string; }; };
+    baggage_belt?: { id: number; belt_code?: string; terminal?: { id: number; terminal_code?: string; name?: string; }; };
+    terminal?: { id: number; terminal_code?: string; name?: string; };
+    terminalDirect?: { id: number; terminal_code?: string; name?: string; };
+    departure?: { gate?: { id: number; gate_code?: string; }; };
+    arrival?: { baggage_belt?: { id: number; belt_code?: string; }; gate?: { id: number; gate_code?: string; }; };
     // UI-level fields used for connecting journeys
     journey_type?: string;
     connecting_departure_id?: string | number;
@@ -62,6 +70,7 @@ type FormData = {
     scheduled_arrival_time: string;
     status_id: string;
     gate_id?: string;
+    arrival_gate_id?: string;
     baggage_belt_id?: string;
     origin_terminal_id?: string;
     destination_terminal_id?: string;
@@ -71,11 +80,55 @@ type FormData = {
 };
 
 export default function FlightModal({ open, onOpenChange, options, initialData = {} }: Props) {
+    // Helper function to extract IDs from relationships
+    const extractGateId = (data: InitialData): string => {
+        if (data.gate_id) return String(data.gate_id);
+        if (data.gate?.id) return String(data.gate.id);
+        if (data.departure?.gate?.id) return String(data.departure.gate.id);
+        return '';
+    };
+
+    const extractArrivalGateId = (data: InitialData): string => {
+        if ((data as any).arrival_gate_id) return String((data as any).arrival_gate_id);
+        if (data.arrival?.gate?.id) return String(data.arrival.gate.id);
+        return '';
+    };
+
+    const extractBeltId = (data: InitialData): string => {
+        if (data.baggage_belt_id) return String(data.baggage_belt_id);
+        if (data.baggageBelt?.id) return String(data.baggageBelt.id);
+        if (data.baggage_belt?.id) return String(data.baggage_belt.id);
+        if (data.arrival?.baggage_belt?.id) return String(data.arrival.baggage_belt.id);
+        return '';
+    };
+
+    const extractOriginTerminalId = (data: InitialData): string => {
+        // First check for direct origin_terminal_id
+        if (data.origin_terminal_id) return String(data.origin_terminal_id);
+        // Check gate's terminal (most common for origin)
+        if (data.gate?.terminal?.id) return String(data.gate.terminal.id);
+        // Check terminal set directly on flight (set by backend)
+        if (data.terminal?.id) return String(data.terminal.id);
+        // Check terminalDirect relationship
+        if (data.terminalDirect?.id) return String(data.terminalDirect.id);
+        // Check departure gate's terminal
+        if (data.departure?.gate?.terminal?.id) return String(data.departure.gate.terminal.id);
+        return '';
+    };
+
+    const extractDestinationTerminalId = (data: InitialData): string => {
+        if (data.destination_terminal_id) return String(data.destination_terminal_id);
+        if (data.baggageBelt?.terminal?.id) return String(data.baggageBelt.terminal.id);
+        if (data.baggage_belt?.terminal?.id) return String(data.baggage_belt.terminal.id);
+        return '';
+    };
+
     // Map initialData to form values, using fallbacks where necessary
     // Prefer the canonical status code string (fk_id_status_code / id_status_code) when available
     const initialStatusId = (initialData && (initialData.status?.id_status_code || initialData.status?.id || initialData.status_id || initialData.fk_id_status_code))
         ? String(initialData.status?.id_status_code ?? initialData.status?.id ?? initialData.status_id ?? initialData.fk_id_status_code)
         : '';
+    
     const form = useForm<FormData>({
         flight_number: initialData.flight_number || '',
         airline_code: initialData.airline_code || '',
@@ -85,11 +138,12 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
         scheduled_departure_time: initialData.scheduled_departure_time || '',
         scheduled_arrival_time: initialData.scheduled_arrival_time || '',
         status_id: initialStatusId || '',
-        // Initialize gate and baggage_belt to empty strings to keep Selects controlled
-        gate_id: initialData.gate_id ? String(initialData.gate_id) : '',
-        baggage_belt_id: initialData.baggage_belt_id ? String(initialData.baggage_belt_id) : '',
-        origin_terminal_id: initialData.origin_terminal_id ? String(initialData.origin_terminal_id) : '',
-        destination_terminal_id: initialData.destination_terminal_id ? String(initialData.destination_terminal_id) : '',
+        // Extract IDs from relationships if direct IDs not available
+        gate_id: extractGateId(initialData),
+        arrival_gate_id: extractArrivalGateId(initialData),
+        baggage_belt_id: extractBeltId(initialData),
+        origin_terminal_id: extractOriginTerminalId(initialData),
+        destination_terminal_id: extractDestinationTerminalId(initialData),
         journey_type: (initialData as any).journey_type || 'direct',
         connecting_departure_id: (initialData as any).connecting_departure_id ? String((initialData as any).connecting_departure_id) : '',
         minimum_connecting_time: (initialData as any).minimum_connecting_time || '',
@@ -200,11 +254,12 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                 ? String(initialData.status?.id_status_code ?? initialData.status?.id ?? initialData.status_id ?? initialData.fk_id_status_code)
                 : '';
             form.setData('status_id', statusVal);
-            // Keep Select values as strings (empty string when not set) to avoid controlled/uncontrolled warnings
-            form.setData('gate_id', initialData.gate_id ? String(initialData.gate_id) : '');
-            form.setData('baggage_belt_id', initialData.baggage_belt_id ? String(initialData.baggage_belt_id) : '');
-            form.setData('origin_terminal_id', initialData.origin_terminal_id ? String(initialData.origin_terminal_id) : '');
-            form.setData('destination_terminal_id', initialData.destination_terminal_id ? String(initialData.destination_terminal_id) : '');
+            // Extract IDs from relationships if direct IDs not available
+            form.setData('gate_id', extractGateId(initialData));
+            form.setData('arrival_gate_id', extractArrivalGateId(initialData));
+            form.setData('baggage_belt_id', extractBeltId(initialData));
+            form.setData('origin_terminal_id', extractOriginTerminalId(initialData));
+            form.setData('destination_terminal_id', extractDestinationTerminalId(initialData));
             form.setData('journey_type', (initialData as any).journey_type || 'direct');
             form.setData('connecting_departure_id', (initialData as any).connecting_departure_id ? String((initialData as any).connecting_departure_id) : '');
             form.setData('minimum_connecting_time', (initialData as any).minimum_connecting_time || '');
@@ -434,6 +489,16 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
         // If editing (initialData has an id) use PUT to update the flight; otherwise POST to create.
         if (initialData && initialData.id) {
             router.put(`/flights/management/${initialData.id}`, submitData, {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => {
+                    // Ensure form is marked as processing
+                    try {
+                        (form as any).processing = true;
+                    } catch (e) {
+                        // no-op
+                    }
+                },
                 onSuccess: () => {
                     setServerError(null);
                     onOpenChange(false);
@@ -472,9 +537,7 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                 onFinish: () => {
                     // Ensure processing state is cleared
                     try {
-                        if ((form as any).processing !== undefined) {
-                            // Form processing state is managed by Inertia
-                        }
+                        (form as any).processing = false;
                     } catch (e) {
                         // no-op
                     }
@@ -525,6 +588,16 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
             }
 
             router.post('/flights/management', submitData, {
+                preserveState: true,
+                preserveScroll: true,
+                onStart: () => {
+                    // Ensure form is marked as processing
+                    try {
+                        (form as any).processing = true;
+                    } catch (e) {
+                        // no-op
+                    }
+                },
                 onSuccess: () => {
                     setServerError(null);
                     onOpenChange(false);
@@ -561,9 +634,7 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                 onFinish: () => {
                     // Ensure processing state is cleared
                     try {
-                        if ((form as any).processing !== undefined) {
-                            // Form processing state is managed by Inertia
-                        }
+                        (form as any).processing = false;
                     } catch (e) {
                         // no-op
                     }
@@ -573,8 +644,24 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={open} onOpenChange={(isOpen) => {
+            // Prevent closing during form submission
+            if (!form.processing) {
+                onOpenChange(isOpen);
+            }
+        }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto relative">
+                {form.processing && (
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+                        <div className="flex flex-col items-center gap-3">
+                            <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                            <p className="text-sm font-medium">{initialData?.id ? 'Updating flight...' : 'Creating flight...'}</p>
+                        </div>
+                    </div>
+                )}
                     <DialogHeader>
                         <DialogTitle>{initialData?.id ? 'Edit Flight' : 'Create New Flight'}</DialogTitle>
                         <DialogDescription>
@@ -620,12 +707,12 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                     <FlightForm form={form} options={options} initialData={initialData} />
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.processing}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={form.processing}>
+                        <Button type="submit" disabled={form.processing} className="min-w-[120px]">
                             {form.processing ? (
-                                <span className="inline-flex items-center">
+                                <span className="inline-flex items-center justify-center">
                                     <svg className="animate-spin mr-2 h-4 w-4" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
@@ -633,7 +720,7 @@ export default function FlightModal({ open, onOpenChange, options, initialData =
                                     {initialData?.id ? 'Updating…' : 'Creating…'}
                                 </span>
                             ) : (
-                                <>{initialData?.id ? 'Update Flight' : 'Create'}</>
+                                <>{initialData?.id ? 'Update' : 'Create'}</>
                             )}
                         </Button>
                     </DialogFooter>

@@ -1,117 +1,175 @@
 import AppLayout from '@/layouts/app-layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { RefreshCw, Search, Plane, MapPin } from 'lucide-react';
-import { Head, router, Link } from '@inertiajs/react';
-import { type BreadcrumbItem } from '@/types';
+import { RefreshCw, Search, Plane, Filter, X, Clock, Route as RouteIcon } from 'lucide-react';
+import { Head, router, Link, usePage } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { useState } from 'react';
-import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface FlightStatus {
     id: number;
-    code: string;
+    id_status_code?: string;
+    status_code: string;
+    status_name: string;
+}
+
+interface Airline {
+    airline_code: string;
+    airline_name: string;
+}
+
+interface Airport {
+    iata_code: string;
+    airport_name: string;
+    city: string;
+}
+
+interface Aircraft {
+    icao_code: string;
+    manufacturer: string;
+    model_name: string;
+}
+
+interface Terminal {
+    id: number;
+    terminal_code: string;
     name: string;
 }
 
 interface Gate {
     id: number;
-    code: string;
-    terminal: string;
-    display: string;
+    gate_code: string;
+    status?: string;
+    terminal: Terminal;
 }
 
 interface BaggageBelt {
     id: number;
-    code: string;
+    belt_code: string;
     status: string;
-    terminal: string;
+    terminal: Terminal;
 }
 
-interface FlightData {
+interface Flight {
     id: number;
     flight_number: string;
-    airline: string;
-    route: string;
-    scheduled_departure: string;
+    airline_code: string;
+    airline: Airline;
+    origin_code: string;
+    origin: Airport;
+    destination_code: string;
+    destination: Airport;
+    aircraft_icao_code: string | null;
+    aircraft: Aircraft | null;
+    scheduled_departure_time: string;
+    scheduled_arrival_time: string;
+    status_id: number;
     status: FlightStatus;
-    gate: {
-        id: number | null;
-        code: string | null;
-        terminal: string | null;
-    };
-    baggage_belt: {
-        id: number | null;
-        code: string | null;
-        status: string | null;
-    };
+    gate: Gate | null;
+    baggage_belt: BaggageBelt | null;
+    terminal?: Terminal;
 }
 
 interface PaginatedFlights {
-    data: FlightData[];
+    data: Flight[];
     current_page: number;
     last_page: number;
     per_page: number;
     total: number;
+    from: number;
+    to: number;
+}
+
+interface Options {
+    statuses: FlightStatus[];
+    gates: Gate[];
+    baggageBelts: BaggageBelt[];
 }
 
 interface Props {
     flights: PaginatedFlights;
-    options: {
-        statuses: FlightStatus[];
-        gates: Gate[];
-        baggageBelts: BaggageBelt[];
+    filters: {
+        search?: string;
+        status?: string;
+        date_from?: string;
+        date_to?: string;
+        order?: string;
     };
+    options: Options;
 }
 
-export default function StatusUpdate({ flights, options }: Props) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filteredFlights, setFilteredFlights] = useState(flights.data);
-    const [flightStatuses, setFlightStatuses] = useState<Record<number, number>>(
-        flights.data.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.status.id }), {})
-    );
-    const [flightGates, setFlightGates] = useState<Record<number, number | null>>(
-        flights.data.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.gate.id }), {})
-    );
-    const [flightBaggageBelts, setFlightBaggageBelts] = useState<Record<number, number | null>>(
-        flights.data.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.baggage_belt.id }), {})
-    );
+export default function StatusUpdate({ flights, filters, options }: Props) {
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const page = usePage<SharedData>();
+    const userTimezone = (page.props as any).user_timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    
+    // Format time with timezone conversion
+    const formatTime = (dateString: string | null): string => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: userTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).format(date);
+        } catch {
+            return 'N/A';
+        }
+    };
+    
+    // Format date with timezone conversion
+    const formatDate = (dateString: string | null): string => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: userTimezone,
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).format(date);
+        } catch {
+            return 'N/A';
+        }
+    };
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Quick Flight Update', href: '/flights/status-update' },
     ];
 
-    const handleSearch = () => {
-        if (searchQuery.trim()) {
-            const filtered = flights.data.filter(f => 
-                f.flight_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (f.airline || '').toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            setFilteredFlights(filtered);
-        } else {
-            setFilteredFlights(flights.data);
-        }
+    const handleSearch = (value: string) => {
+        setSearchQuery(value);
+        router.get('/flights/status-update', { ...filters, search: value || undefined }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
-    // Update filtered flights when flights data changes (pagination)
-    React.useEffect(() => {
-        if (!searchQuery.trim()) {
-            setFilteredFlights(flights.data);
-            setFlightStatuses(flights.data.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.status.id }), {}));
-            setFlightGates(flights.data.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.gate.id }), {}));
-            setFlightBaggageBelts(flights.data.reduce((acc, flight) => ({ ...acc, [flight.id]: flight.baggage_belt.id }), {}));
-        }
-    }, [flights.data, searchQuery]);
+    const handleFilterChange = (key: string, value: string) => {
+        router.get('/flights/status-update', { ...filters, [key]: value || undefined }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
+    const clearFilters = () => {
+        setSearchQuery('');
+        router.get('/flights/status-update', {}, { preserveState: true });
     };
 
     const handleStatusUpdate = (flightId: number, statusId: string) => {
@@ -138,16 +196,40 @@ export default function StatusUpdate({ flights, options }: Props) {
         });
     };
 
-    const getStatusColor = (code: string) => {
+    const getStatusColor = (statusCode: string) => {
+        // Extract just the code part (e.g., 'SCH' from '1-SCH' or 'SCH')
+        const code = statusCode.includes('-') ? statusCode.split('-')[1] : statusCode;
         switch (code) {
-            case 'SCH': return 'bg-blue-500';
-            case 'BRD': return 'bg-green-500';
-            case 'DEP': return 'bg-gray-500';
-            case 'ARR': return 'bg-gray-500';
-            case 'DLY': return 'bg-yellow-500';
-            case 'CNX': return 'bg-red-500';
-            case 'DIV': return 'bg-orange-500';
-            default: return 'bg-gray-400';
+            case 'SCH': return 'bg-blue-500/20 text-blue-400 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
+            case 'BRD': return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
+            case 'DEP': return 'bg-green-600/20 text-green-600 border-green-600/30 dark:bg-green-600/20 dark:text-green-500 dark:border-green-600/30';
+            case 'ARR': return 'bg-purple-500/20 text-purple-400 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30';
+            case 'DLY': return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
+            case 'CNX': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
+            case 'CNL': return 'bg-red-500/20 text-red-400 border-red-500/30 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30 dark:bg-gray-500/20 dark:text-gray-400 dark:border-gray-500/30';
+        }
+    };
+
+    // Get gate status color
+    const getGateStatusColor = (status: string | undefined): string => {
+        if (!status) return 'text-muted-foreground';
+        switch (status.toUpperCase()) {
+            case 'AVAILABLE': return 'text-green-600 dark:text-green-400';
+            case 'OCCUPIED': return 'text-red-600 dark:text-red-400';
+            case 'MAINTENANCE': return 'text-orange-600 dark:text-orange-400';
+            default: return 'text-muted-foreground';
+        }
+    };
+
+    // Get belt status color
+    const getBeltStatusColor = (status: string | undefined): string => {
+        if (!status) return 'text-muted-foreground';
+        switch (status.toUpperCase()) {
+            case 'AVAILABLE': return 'text-green-600 dark:text-green-400';
+            case 'OCCUPIED': return 'text-red-600 dark:text-red-400';
+            case 'MAINTENANCE': return 'text-orange-600 dark:text-orange-400';
+            default: return 'text-muted-foreground';
         }
     };
 
@@ -156,6 +238,7 @@ export default function StatusUpdate({ flights, options }: Props) {
             <Head title="Quick Flight Update" />
 
             <div className="space-y-6 py-6 px-4">
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -170,150 +253,301 @@ export default function StatusUpdate({ flights, options }: Props) {
 
                 <Separator />
 
+                {/* Filters Card */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Search Flight</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                            <Filter className="w-5 h-5" />
+                            Filters & Search
+                        </CardTitle>
+                        <CardDescription>
+                            Filter flights by search terms, status, or date range
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                                <Input
-                                    type="text"
-                                    placeholder="Enter flight number or airline..."
-                                    className="pl-10"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                />
+                    <CardContent className="space-y-4">
+                        <div className="flex items-end gap-4">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="search">Search</Label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                                        <Input
+                                            id="search"
+                                            placeholder="Flight #, airline, airport..."
+                                            className="pl-10 pr-10"
+                                            value={searchQuery}
+                                            onChange={(e) => handleSearch(e.target.value)}
+                                        />
+                                        {searchQuery && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSearch('')}
+                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="status">Status</Label>
+                                    <Select
+                                        value={filters.status || 'all'}
+                                        onValueChange={(value) => handleFilterChange('status', (value === 'all' ? undefined : value) as any)}
+                                    >
+                                        <SelectTrigger id="status">
+                                            <SelectValue placeholder="All Status" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-60 overflow-auto">
+                                            <SelectItem value="all">All Status</SelectItem>
+                                            {options.statuses.map((status) => (
+                                                <SelectItem key={`status-${status.id}`} value={(status.id_status_code ?? String(status.id)).toString()}>
+                                                    {status.status_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_from">From Date</Label>
+                                    <Input
+                                        id="date_from"
+                                        type="date"
+                                        value={filters.date_from || ''}
+                                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_to">To Date</Label>
+                                    <Input
+                                        id="date_to"
+                                        type="date"
+                                        value={filters.date_to || ''}
+                                        onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                                    />
+                                </div>
                             </div>
-                            <Button onClick={handleSearch}>Search</Button>
-                            {searchQuery && (
-                                <Button variant="outline" onClick={() => { setSearchQuery(''); setFilteredFlights(flights); }}>
-                                    Clear
+                            {(filters.search || filters.status || filters.date_from || filters.date_to) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={clearFilters}
+                                    className="gap-2"
+                                >
+                                    <X className="w-4 h-4" />
+                                    Clear Filters
                                 </Button>
                             )}
                         </div>
+                        {(filters.search || filters.status || filters.date_from || filters.date_to) && (
+                            <div className="text-sm text-muted-foreground">
+                                Showing {flights.from}-{flights.to} of {flights.total} flights
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
+                {/* Flights Table Card */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>All Flights ({flights.total})</CardTitle>
+                        <CardTitle>All Flights</CardTitle>
+                        <CardDescription>
+                            Quick update flight status, gate assignments, and baggage belt assignments
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Flight</TableHead>
-                                    <TableHead>Route</TableHead>
-                                    <TableHead>Departure</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Gate</TableHead>
-                                    <TableHead>Baggage Belt</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredFlights.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                            No flights found
-                                        </TableCell>
+                        <div className="overflow-x-auto">
+                            <Table className="table-fixed">
+                                <TableHeader>
+                                    <TableRow className="bg-muted/50">
+                                        <TableHead className="font-semibold text-center w-24">Flight #</TableHead>
+                                        <TableHead className="font-semibold text-center w-32">Route</TableHead>
+                                        <TableHead className="font-semibold text-center w-28">Airline</TableHead>
+                                        <TableHead className="font-semibold text-center w-28">Aircraft</TableHead>
+                                        <TableHead className="font-semibold text-center w-24">Terminal</TableHead>
+                                        <TableHead className="font-semibold text-center w-24">Gate</TableHead>
+                                        <TableHead className="font-semibold text-center w-24">Gate Status</TableHead>
+                                        <TableHead className="font-semibold text-center w-24">Belt</TableHead>
+                                        <TableHead className="font-semibold text-center w-24">Belt Status</TableHead>
+                                        <TableHead className="font-semibold text-center w-28">Departure</TableHead>
+                                        <TableHead className="font-semibold text-center w-28">Arrival</TableHead>
+                                        <TableHead className="font-semibold text-center w-32">Status</TableHead>
                                     </TableRow>
-                                ) : (
-                                    filteredFlights.map((flight) => (
-                                        <TableRow key={`flight-${flight.id}`} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
-                                            <TableCell>
-                                                <div>
-                                                    <div className="font-medium flex items-center gap-2">
-                                                        <Plane className="w-4 h-4 text-muted-foreground" />
-                                                        {flight.flight_number}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">{flight.airline}</div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-1">
-                                                    <MapPin className="w-3 h-3 text-muted-foreground" />
-                                                    <span className="text-sm">{flight.route}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="text-sm">{new Date(flight.scheduled_departure).toLocaleString()}</div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={flightStatuses[flight.id]?.toString()}
-                                                    onValueChange={(value) => {
-                                                        setFlightStatuses(prev => ({ ...prev, [flight.id]: parseInt(value) }));
-                                                        handleStatusUpdate(flight.id, value);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[140px]">
-                                                        <SelectValue placeholder="Select status" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {options.statuses.map((status) => (
-                                                            <SelectItem key={`status-${status.id}`} value={status.id.toString()}>
-                                                                {status.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={flightGates[flight.id]?.toString() || 'none'}
-                                                    onValueChange={(value) => {
-                                                        setFlightGates(prev => ({ ...prev, [flight.id]: value === 'none' ? null : parseInt(value) }));
-                                                        handleGateUpdate(flight.id, value);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[120px]">
-                                                        <SelectValue placeholder="Select gate" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">No Gate</SelectItem>
-                                                        {options.gates.map((gate) => (
-                                                            <SelectItem key={`gate-${gate.id}-${gate.code ?? ''}`} value={gate.id.toString()}>
-                                                                {gate.display}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={flightBaggageBelts[flight.id]?.toString() || 'none'}
-                                                    onValueChange={(value) => {
-                                                        setFlightBaggageBelts(prev => ({ ...prev, [flight.id]: value === 'none' ? null : parseInt(value) }));
-                                                        handleBaggageBeltUpdate(flight.id, value);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[120px]">
-                                                        <SelectValue placeholder="Select belt" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">No Belt</SelectItem>
-                                                        {options.baggageBelts.map((belt) => (
-                                                            <SelectItem key={`belt-${belt.id}-${belt.code ?? ''}`} value={belt.id.toString()}>
-                                                                {belt.code} • {belt.terminal ?? 'T?'} — #{belt.id} ({belt.status})
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                </TableHeader>
+                                <TableBody>
+                                    {flights.data.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                                                No flights found. Try adjusting your filters.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : (
+                                        flights.data.map((flight) => (
+                                            <TableRow key={flight.id} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
+                                                <TableCell className="font-bold text-primary w-24">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="truncate">{flight.flight_number}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-left w-32">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="font-medium text-sm text-right flex-1 truncate">{flight.origin?.iata_code || flight.origin_code}</span>
+                                                            <span className="text-muted-foreground text-xs shrink-0">→</span>
+                                                            <span className="font-medium text-sm text-left flex-1 truncate">{flight.destination?.iata_code || flight.destination_code}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-xs text-muted-foreground text-right flex-1 truncate">{flight.origin?.city || ''}</span>
+                                                            <span className="text-muted-foreground text-xs shrink-0">→</span>
+                                                            <span className="text-xs text-muted-foreground text-left flex-1 truncate">{flight.destination?.city || ''}</span>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="w-28">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium text-sm truncate w-full">{flight.airline?.airline_name || 'N/A'}</span>
+                                                        <span className="text-xs text-muted-foreground">{flight.airline_code}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="w-28">
+                                                    {flight.aircraft ? (
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm truncate w-full">{flight.aircraft.icao_code || flight.aircraft_icao_code || 'N/A'}</span>
+                                                            {flight.aircraft.manufacturer && flight.aircraft.model_name && (
+                                                                <span className="text-xs text-muted-foreground truncate w-full">
+                                                                    {flight.aircraft.model_name.startsWith(flight.aircraft.manufacturer) 
+                                                                        ? flight.aircraft.model_name 
+                                                                        : `${flight.aircraft.manufacturer} ${flight.aircraft.model_name}`}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="w-24">
+                                                    {flight.terminal ? (
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm truncate w-full">{flight.terminal.terminal_code || flight.terminal.name || 'N/A'}</span>
+                                                            {flight.terminal.name && flight.terminal.terminal_code && (
+                                                                <span className="text-xs text-muted-foreground truncate w-full">{flight.terminal.name}</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (flight.gate?.terminal || flight.baggage_belt?.terminal) ? (
+                                                        <div className="flex flex-col items-center text-center">
+                                                            <span className="font-medium text-sm truncate w-full">
+                                                                {(flight.gate?.terminal || flight.baggage_belt?.terminal)?.terminal_code || 'N/A'}
+                                                            </span>
+                                                            {(flight.gate?.terminal || flight.baggage_belt?.terminal)?.name && (
+                                                                <span className="text-xs text-muted-foreground truncate w-full">
+                                                                    {(flight.gate?.terminal || flight.baggage_belt?.terminal)?.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="font-bold text-sm text-center">N/A</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center w-24">
+                                                    <Select
+                                                        value={flight.gate?.id?.toString() || 'none'}
+                                                        onValueChange={(value) => handleGateUpdate(flight.id, value)}
+                                                    >
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select gate" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">No Gate</SelectItem>
+                                                            {options.gates.map((gate) => (
+                                                                <SelectItem key={`gate-${gate.id}-${gate.gate_code ?? ''}`} value={String(gate.id)}>
+                                                                    {gate.gate_code} {gate.terminal?.terminal_code ? `(${gate.terminal.terminal_code})` : ''}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
+                                                <TableCell className="text-center w-24">
+                                                    <span className={`text-sm font-medium ${getGateStatusColor(flight.gate?.status)}`}>
+                                                        {flight.gate?.status || 'N/A'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-center w-24">
+                                                    <Select
+                                                        value={flight.baggage_belt?.id?.toString() || 'none'}
+                                                        onValueChange={(value) => handleBaggageBeltUpdate(flight.id, value)}
+                                                    >
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select belt" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">No Belt</SelectItem>
+                                                            {options.baggageBelts.map((belt) => (
+                                                                <SelectItem key={`belt-${belt.id}-${belt.belt_code ?? ''}`} value={String(belt.id)}>
+                                                                    {belt.belt_code} {belt.terminal?.terminal_code ? `(${belt.terminal.terminal_code})` : ''}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
+                                                <TableCell className="text-center w-24">
+                                                    <span className={`text-sm font-medium ${getBeltStatusColor(flight.baggage_belt?.status)}`}>
+                                                        {flight.baggage_belt?.status || 'N/A'}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="w-28">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium flex items-center gap-1 text-sm">
+                                                            <Clock className="w-3 h-3 shrink-0" />
+                                                            <span className="truncate">{formatTime(flight.scheduled_departure_time)}</span>
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground text-center truncate w-full">
+                                                            {formatDate(flight.scheduled_departure_time)}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="w-28">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <span className="font-medium flex items-center gap-1 text-sm">
+                                                            <Clock className="w-3 h-3 shrink-0" />
+                                                            <span className="truncate">{formatTime(flight.scheduled_arrival_time)}</span>
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground text-center truncate w-full">
+                                                            {formatDate(flight.scheduled_arrival_time)}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center w-32">
+                                                    <Select
+                                                        value={(flight.status?.id_status_code ?? String(flight.status?.id)).toString()}
+                                                        onValueChange={(value) => handleStatusUpdate(flight.id, value)}
+                                                    >
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {options.statuses.map((status) => (
+                                                                <SelectItem key={`status-${status.id}`} value={(status.id_status_code ?? String(status.id)).toString()}>
+                                                                    {status.status_name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                     {/* Pagination */}
                     {flights.total > 0 && (
                         <div className="flex items-center justify-between px-6 py-4 border-t">
                             <div className="text-sm text-muted-foreground">
-                                Showing {(flights.current_page - 1) * flights.per_page + 1} to {Math.min(flights.current_page * flights.per_page, flights.total)} of {flights.total} entries
+                                Showing {flights.from} to {flights.to} of {flights.total} entries
                             </div>
                             <div className="flex gap-1">
                                 {flights.current_page > 1 && (

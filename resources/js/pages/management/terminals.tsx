@@ -14,23 +14,34 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Building2, Plus, Pencil, Trash2, Search, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Head, router, useForm } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 interface AirportOption {
     iata_code: string;
     airport_name: string;
 }
 
+interface Gate {
+    id: number;
+    gate_code: string;
+}
+
+interface BaggageBelt {
+    id: number;
+    belt_code: string;
+}
+
 interface TerminalRecord {
     id: number;
     terminal_code: string;
-    name: string;
     airport: AirportOption;
     gates_count: number;
     baggage_belts_count: number;
+    gates?: Gate[];
+    baggage_belts?: BaggageBelt[];
 }
 
 interface PaginatedTerminals {
@@ -52,6 +63,7 @@ interface StatsSummary {
 interface FiltersState {
     search?: string;
     airport?: string;
+    letter?: string;
     per_page?: number;
 }
 
@@ -67,6 +79,7 @@ export default function TerminalManagement({ terminals, airports, filters, stats
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showEditDialog, setShowEditDialog] = useState(false);
+    const [expandedTerminals, setExpandedTerminals] = useState<Set<number>>(new Set());
 
     const terminalsList = terminals.data || [];
 
@@ -74,19 +87,18 @@ export default function TerminalManagement({ terminals, airports, filters, stats
     const [airportFilter, setAirportFilter] = useState(filters.airport ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? terminals.per_page ?? 10));
     const [filterAirportLetter, setFilterAirportLetter] = useState<string | null>(null);
+    const [terminalLetter, setTerminalLetter] = useState<string | null>(filters.letter ?? null);
     const [createAirportLetter, setCreateAirportLetter] = useState<string | null>(null);
     const [editAirportLetter, setEditAirportLetter] = useState<string | null>(null);
 
     const createForm = useForm({
         iata_code: '',
         terminal_code: '',
-        name: '',
     });
 
     const editForm = useForm({
         iata_code: '',
         terminal_code: '',
-        name: '',
     });
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -111,10 +123,15 @@ export default function TerminalManagement({ terminals, airports, filters, stats
         }
     };
 
+    const hasActiveFilters = useMemo(() => {
+        return !!(searchTerm || airportFilter || terminalLetter);
+    }, [searchTerm, airportFilter, terminalLetter]);
+
     const buildParams = (overrides: Record<string, number | string> = {}) => {
         const params: Record<string, number | string> = { ...overrides };
         if (searchTerm) params.search = searchTerm;
         if (airportFilter) params.airport = airportFilter;
+        if (terminalLetter) params.letter = terminalLetter;
         if (perPage) params.per_page = Number(perPage);
         return params;
     };
@@ -128,10 +145,10 @@ export default function TerminalManagement({ terminals, airports, filters, stats
         });
     };
 
-    const resetFilters = () => {
+    const clearFilters = () => {
         setSearchTerm('');
         setAirportFilter('');
-        setPerPage('10');
+        setTerminalLetter(null);
         router.get('/management/terminals', {}, { replace: true });
     };
 
@@ -145,9 +162,20 @@ export default function TerminalManagement({ terminals, airports, filters, stats
         editForm.setData({
             iata_code: terminal.airport?.iata_code ?? '',
             terminal_code: terminal.terminal_code ?? '',
-            name: terminal.name ?? '',
         });
         setShowEditDialog(true);
+    };
+
+    const toggleTerminalExpansion = (terminalId: number) => {
+        setExpandedTerminals(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(terminalId)) {
+                newSet.delete(terminalId);
+            } else {
+                newSet.add(terminalId);
+            }
+            return newSet;
+        });
     };
 
     const paginationLabel = useMemo(() => {
@@ -202,7 +230,7 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                             <CardTitle className="text-sm text-muted-foreground">With Baggage Belts</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-orange-500">{stats.with_belts}</div>
+                            <div className="text-2xl font-bold text-black dark:text-gray-300">{stats.with_belts}</div>
                         </CardContent>
                     </Card>
                 </div>
@@ -214,22 +242,27 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-4">
                             <div className="space-y-2">
-                                <Label htmlFor="terminal-search">Search</Label>
+                                <Label htmlFor="terminal-search">Search Terminal Code</Label>
                                 <div className="relative">
                                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         id="terminal-search"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                applyFilters();
-                                            }
-                                        }}
-                                        placeholder="Terminal name/code"
+                                        placeholder="Terminal code"
                                         className="pl-9"
                                     />
+                                </div>
+                                <div className="px-1 py-1 flex gap-1 flex-wrap">
+                                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').map((ch) => (
+                                        <button
+                                            key={`terminal-letter-${ch}`}
+                                            type="button"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => setTerminalLetter(terminalLetter === ch ? null : ch)}
+                                            className={`text-xs px-1.5 py-0.5 rounded ${terminalLetter === ch ? 'bg-primary text-primary-foreground font-semibold' : 'hover:bg-muted'}`}
+                                        >{ch}</button>
+                                    ))}
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -285,8 +318,18 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                 </Select>
                             </div>
                             <div className="flex items-end gap-2">
-                                <Button className="flex-1" onClick={() => applyFilters()}>Apply</Button>
-                                <Button variant="outline" onClick={resetFilters}>Reset</Button>
+                                <Button 
+                                    className={hasActiveFilters ? "flex-1" : "w-full"} 
+                                    onClick={() => applyFilters()}
+                                >
+                                    {hasActiveFilters ? 'Apply' : 'Apply Filters'}
+                                </Button>
+                                {hasActiveFilters && (
+                                    <Button variant="outline" onClick={clearFilters} className="gap-2">
+                                        <X className="w-4 h-4" />
+                                        Clear
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </CardContent>
@@ -300,7 +343,7 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Terminal</TableHead>
+                                    <TableHead>Terminal Code</TableHead>
                                     <TableHead>Airport</TableHead>
                                     <TableHead>Assignments</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
@@ -309,49 +352,103 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                             <TableBody>
                                 {terminalsList.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                             No terminals found.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    terminalsList.map((terminal) => (
-                                        <TableRow key={`terminal-${terminal.id}`} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
-                                            <TableCell className="font-medium">
-                                                <div>{terminal.terminal_code}</div>
-                                                {terminal.name && (
-                                                    <div className="text-xs text-muted-foreground">{terminal.name}</div>
+                                    terminalsList.map((terminal) => {
+                                        const isExpanded = expandedTerminals.has(terminal.id);
+                                        return (
+                                            <React.Fragment key={`terminal-${terminal.id}`}>
+                                                <TableRow className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
+                                                    <TableCell className="font-medium">
+                                                        {terminal.terminal_code}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="font-medium">{terminal.airport.iata_code}</div>
+                                                        <div className="text-xs text-muted-foreground">{terminal.airport.airport_name}</div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-sm">{terminal.gates_count} gates</div>
+                                                        <div className="text-sm text-black dark:text-gray-300">{terminal.baggage_belts_count} belts</div>
+                                                        {(terminal.gates_count > 0 || terminal.baggage_belts_count > 0) && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="mt-1 h-6 text-xs"
+                                                                onClick={() => toggleTerminalExpansion(terminal.id)}
+                                                            >
+                                                                {isExpanded ? (
+                                                                    <>
+                                                                        <ChevronUp className="w-3 h-3 mr-1" />
+                                                                        Hide
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <ChevronDown className="w-3 h-3 mr-1" />
+                                                                        Show
+                                                                    </>
+                                                                )}
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                                                                onClick={() => openEditDialog(terminal)}
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                                onClick={() => handleDelete(terminal)}
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                                {isExpanded && (terminal.gates || terminal.baggage_belts) && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="bg-muted/30">
+                                                            <div className="grid md:grid-cols-2 gap-4 py-4">
+                                                                {terminal.gates && terminal.gates.length > 0 && (
+                                                                    <div>
+                                                                        <h4 className="font-semibold text-sm mb-2">Gates ({terminal.gates.length})</h4>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {terminal.gates.map((gate) => (
+                                                                                <span key={gate.id} className="px-2 py-1 bg-background border rounded text-sm">
+                                                                                    {gate.gate_code}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {terminal.baggage_belts && terminal.baggage_belts.length > 0 && (
+                                                                    <div>
+                                                                        <h4 className="font-semibold text-sm mb-2">Baggage Belts ({terminal.baggage_belts.length})</h4>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {terminal.baggage_belts.map((belt) => (
+                                                                                <span key={belt.id} className="px-2 py-1 bg-background border rounded text-sm text-black dark:text-gray-300">
+                                                                                    {belt.belt_code}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
                                                 )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="font-medium">{terminal.airport.airport_name}</div>
-                                                <div className="text-xs text-muted-foreground">{terminal.airport.iata_code}</div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="text-sm">{terminal.gates_count} gates</div>
-                                                <div className="text-sm">{terminal.baggage_belts_count} belts</div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                                                        onClick={() => openEditDialog(terminal)}
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                                        onClick={() => handleDelete(terminal)}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                            </React.Fragment>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
@@ -471,17 +568,6 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                     <p className="text-sm text-destructive">{createForm.errors.terminal_code}</p>
                                 )}
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="create-terminal-name">Display Name</Label>
-                                <Input
-                                    id="create-terminal-name"
-                                    value={createForm.data.name}
-                                    onChange={(e) => createForm.setData('name', e.target.value)}
-                                />
-                                {createForm.errors.name && (
-                                    <p className="text-sm text-destructive">{createForm.errors.name}</p>
-                                )}
-                            </div>
                             <DialogFooter>
                                 <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                                     Cancel
@@ -498,7 +584,7 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Edit Terminal</DialogTitle>
-                            <DialogDescription>Update terminal information and assignments.</DialogDescription>
+                            <DialogDescription>Update terminal information.</DialogDescription>
                         </DialogHeader>
                         <form
                             onSubmit={(e) => {
@@ -552,17 +638,6 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                 />
                                 {editForm.errors.terminal_code && (
                                     <p className="text-sm text-destructive">{editForm.errors.terminal_code}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-terminal-name">Display Name</Label>
-                                <Input
-                                    id="edit-terminal-name"
-                                    value={editForm.data.name}
-                                    onChange={(e) => editForm.setData('name', e.target.value)}
-                                />
-                                {editForm.errors.name && (
-                                    <p className="text-sm text-destructive">{editForm.errors.name}</p>
                                 )}
                             </div>
                             <DialogFooter>

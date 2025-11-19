@@ -107,15 +107,25 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
         return belts.filter((b: any) => b.terminal && b.terminal.airport && b.terminal.airport.iata_code === code);
     }, [form.data.destination_code, belts]);
 
-    // auto-default baggage belt when destination (or connecting selection) changes
+    // Determine if this is an arrival flight (destination is local airport - MNL)
+    const isArrivalFlight = React.useMemo(() => {
+        // Check if destination is MNL (Manila) - you may need to adjust this based on your local airport code
+        const localAirportCode = 'MNL'; // This should match your local airport
+        return form.data.destination_code === localAirportCode;
+    }, [form.data.destination_code]);
+
+    // auto-default baggage belt when destination (or connecting selection) changes (only for arrivals)
     React.useEffect(() => {
-        if (!form.data.baggage_belt_id) {
+        if (isArrivalFlight && !form.data.baggage_belt_id) {
             if (destinationBelts.length) {
                 // Use the belt `id` as the canonical selected value (always a string)
                 form.setData('baggage_belt_id', String(destinationBelts[0].id));
             }
+        } else if (!isArrivalFlight && form.data.baggage_belt_id) {
+            // Clear baggage belt if not an arrival flight
+            form.setData('baggage_belt_id', '');
         }
-    }, [destinationBelts]);
+    }, [destinationBelts, isArrivalFlight]);
 
     // Auto-calculate scheduled_departure_time when journey is connecting
     React.useEffect(() => {
@@ -136,31 +146,52 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
         }
     }, [form.data.journey_type, form.data.connecting_departure_id, form.data.minimum_connecting_time, options]);
 
+    // Track if initial data has been loaded to prevent overriding extracted values
+    const [initialDataLoaded, setInitialDataLoaded] = React.useState(false);
+    
     React.useEffect(() => {
-        // Default origin terminal and gate when origin changes
+        // Mark initial data as loaded after a short delay to allow FlightModal to set extracted values
+        if (props.initialData?.id) {
+            const timer = setTimeout(() => setInitialDataLoaded(true), 100);
+            return () => clearTimeout(timer);
+        } else {
+            setInitialDataLoaded(true); // For new flights, we can default immediately
+        }
+    }, [props.initialData?.id]);
+
+    React.useEffect(() => {
+        // Only default values if initial data has been processed and fields are truly empty
+        // This prevents overriding values extracted from relationships when editing
+        if (!initialDataLoaded) return;
+        
+        const isNewFlight = !props.initialData?.id;
+        
+        // Default origin terminal and gate when origin changes (only for new flights or if truly empty)
         if (form.data.origin_code) {
-            if (originTerminals.length && !form.data.origin_terminal_id) {
+            // Only default if field is empty AND (it's a new flight OR we've confirmed no initial data)
+            if (originTerminals.length && !form.data.origin_terminal_id && (isNewFlight || !props.initialData?.id)) {
                 form.setData('origin_terminal_id', String(originTerminals[0].id));
             }
-            if (departureGates.length && !form.data.gate_id) {
-                form.setData('gate_id', String(departureGates[0].gate_code ?? departureGates[0].id));
+            if (departureGates.length && !form.data.gate_id && (isNewFlight || !props.initialData?.id)) {
+                form.setData('gate_id', String(departureGates[0].id));
             }
         }
 
-        // Default destination terminal, arrival gate and baggage belt when destination changes
+        // Default destination terminal and arrival gate when destination changes (only for new flights or if truly empty)
         if (form.data.destination_code) {
-            if (destinationTerminals.length && !form.data.destination_terminal_id) {
+            if (destinationTerminals.length && !form.data.destination_terminal_id && (isNewFlight || !props.initialData?.id)) {
                 form.setData('destination_terminal_id', String(destinationTerminals[0].id));
             }
-            if (arrivalGates.length && !form.data.arrival_gate_id) {
-                form.setData('arrival_gate_id', String(arrivalGates[0].gate_code ?? arrivalGates[0].id));
+            if (arrivalGates.length && !form.data.arrival_gate_id && (isNewFlight || !props.initialData?.id)) {
+                form.setData('arrival_gate_id', String(arrivalGates[0].id));
             }
-            if (destinationBelts.length && !form.data.baggage_belt_id) {
+            // Only set baggage belt for arrival flights (only for new flights or if truly empty)
+            if (isArrivalFlight && destinationBelts.length && !form.data.baggage_belt_id && (isNewFlight || !props.initialData?.id)) {
                 // Store the belt `id` consistently as a string to avoid controlled/uncontrolled warnings
                 form.setData('baggage_belt_id', String(destinationBelts[0].id));
             }
         }
-    }, [form.data.origin_code, form.data.destination_code, originTerminals, destinationTerminals, departureGates, arrivalGates, destinationBelts]);
+    }, [form.data.origin_code, form.data.destination_code, originTerminals, destinationTerminals, departureGates, arrivalGates, destinationBelts, isArrivalFlight, props.initialData?.id, initialDataLoaded]);
 
     return (
         <div className="grid gap-4 py-4">
@@ -246,11 +277,20 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                                 (ac.model_name || '').toLowerCase().includes(aircraftSearch.toLowerCase());
                             const matchesLetter = !aircraftLetter || (ac.icao_code || '').startsWith(aircraftLetter);
                             return matchesSearch && matchesLetter;
-                        })).map((ac: any) => (
-                            <SelectItem key={`aircraft-${ac.icao_code}`} value={ac.icao_code}>
-                                {ac.icao_code} - {ac.manufacturer} {ac.model_name}
-                            </SelectItem>
-                        ))}
+                        })).map((ac: any) => {
+                            // Format aircraft name - avoid duplicates
+                            let aircraftName = ac.model_name || '';
+                            if (ac.manufacturer && aircraftName && !aircraftName.toLowerCase().startsWith(ac.manufacturer.toLowerCase())) {
+                                aircraftName = `${ac.manufacturer} ${aircraftName}`;
+                            } else if (ac.manufacturer && !aircraftName) {
+                                aircraftName = ac.manufacturer;
+                            }
+                            return (
+                                <SelectItem key={`aircraft-${ac.icao_code}`} value={ac.icao_code}>
+                                    {ac.icao_code} - {aircraftName || 'N/A'}
+                                </SelectItem>
+                            );
+                        })}
                     </SelectContent>
                 </Select>
                 {form.errors?.aircraft_icao_code && <div className="text-destructive text-sm mt-1">{form.errors.aircraft_icao_code}</div>}
@@ -514,22 +554,24 @@ export default function FlightForm<TForm extends { data: any; setData: (k: strin
                         </div>
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label>Baggage Belt</Label>
-                        <Select value={form.data.baggage_belt_id ?? ''} onValueChange={(v: any) => form.setData('baggage_belt_id', v)}>
-                            <SelectTrigger id="baggage_belt_id"><SelectValue placeholder="Select baggage belt" /></SelectTrigger>
-                            <SelectContent>
-                                {destinationBelts.map((b: any) => (
-                                    <SelectItem
-                                        key={`belt-${b.id}-${b.belt_code ?? ''}`}
-                                        value={String(b.id)}
-                                    >
-                                        {b.belt_code ?? b.id} • {b.terminal?.name ?? b.terminal?.id ?? b.terminal?.code ?? 'T?'} — #{b.id}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {isArrivalFlight && (
+                        <div className="grid gap-2">
+                            <Label>Baggage Belt</Label>
+                            <Select value={form.data.baggage_belt_id ?? ''} onValueChange={(v: any) => form.setData('baggage_belt_id', v)}>
+                                <SelectTrigger id="baggage_belt_id"><SelectValue placeholder="Select baggage belt" /></SelectTrigger>
+                                <SelectContent>
+                                    {destinationBelts.map((b: any) => (
+                                        <SelectItem
+                                            key={`belt-${b.id}-${b.belt_code ?? ''}`}
+                                            value={String(b.id)}
+                                        >
+                                            {b.belt_code ?? b.id}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                 </div>
             )}
 
