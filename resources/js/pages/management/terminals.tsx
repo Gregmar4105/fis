@@ -83,7 +83,7 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
 
     const terminalsList = terminals.data || [];
 
-    const [searchTerm, setSearchTerm] = useState(filters.search ?? '');
+    const [searchTerm, setSearchTerm] = useState('');
     const [airportFilter, setAirportFilter] = useState(filters.airport ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? terminals.per_page ?? 10));
     const [filterAirportLetter, setFilterAirportLetter] = useState<string | null>(null);
@@ -123,12 +123,11 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
     };
 
     const hasActiveFilters = useMemo(() => {
-        return !!(searchTerm || airportFilter);
-    }, [searchTerm, airportFilter]);
+        return !!airportFilter;
+    }, [airportFilter]);
 
     const buildParams = (overrides: Record<string, number | string> = {}) => {
         const params: Record<string, number | string> = { ...overrides };
-        if (searchTerm) params.search = searchTerm;
         if (airportFilter) params.airport = airportFilter;
         if (perPage) params.per_page = Number(perPage);
         return params;
@@ -145,6 +144,7 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
 
     const clearFilters = () => {
         setSearchTerm('');
+        setFilterAirportLetter(null);
         setAirportFilter('');
         router.get('/management/terminals', {}, { replace: true });
     };
@@ -229,20 +229,7 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                         <CardTitle>Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="terminal-search">Search Terminal Code</Label>
-                                <div className="relative">
-                                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                    <Input
-                                        id="terminal-search"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Terminal code"
-                                        className="pl-9"
-                                    />
-                                </div>
-                            </div>
+                        <div className="grid gap-4 md:grid-cols-3">
                             <div className="space-y-2">
                                 <Label htmlFor="terminal-airport">Airport</Label>
                                 <Select value={airportFilter || 'all'} onValueChange={(value) => setAirportFilter(value === 'all' ? '' : value)}>
@@ -250,19 +237,38 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                                         <SelectValue placeholder="All airports" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-72 overflow-auto">
-                                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
-                                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
-                                                <button
-                                                    key={`filter-airport-letter-${ch}`}
-                                                    type="button"
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    onClick={() => setFilterAirportLetter(filterAirportLetter === ch ? null : ch)}
-                                                    className={`text-xs px-1 ${filterAirportLetter === ch ? 'underline font-semibold' : ''}`}
-                                                >{ch}</button>
-                                            ))}
+                                        <div className="p-2 border-b space-y-2">
+                                            <div className="relative">
+                                                <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search airport or IATA code"
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    className="pl-8 h-8 text-sm"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="px-1 flex gap-1 flex-wrap">
+                                                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                    <button
+                                                        key={`filter-airport-letter-${ch}`}
+                                                        type="button"
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={() => setFilterAirportLetter(filterAirportLetter === ch ? null : ch)}
+                                                        className={`text-xs px-1 ${filterAirportLetter === ch ? 'underline font-semibold' : ''}`}
+                                                    >{ch}</button>
+                                                ))}
+                                            </div>
                                         </div>
                                         <SelectItem value="all">All</SelectItem>
-                                        {airports.filter((airport) => !filterAirportLetter || (airport.iata_code || '').startsWith(filterAirportLetter)).map((airport) => {
+                                        {airports.filter((airport) => {
+                                            const matchesSearch = !searchTerm || 
+                                                (airport.iata_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                (airport.airport_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+                                            const matchesLetter = !filterAirportLetter || (airport.iata_code || '').startsWith(filterAirportLetter);
+                                            return matchesSearch && matchesLetter;
+                                        }).map((airport) => {
                                             const hasNoTerminal = airportsWithoutTerminals.some(a => a.iata_code === airport.iata_code);
                                             return (
                                                 <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>

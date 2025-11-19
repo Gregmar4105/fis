@@ -95,14 +95,30 @@ class TerminalManagementController extends Controller
      */
     public function update(Request $request, Terminal $terminal)
     {
-        $validated = $request->validate([
-            'terminal_code' => 'sometimes|string|max:10',
-            'iata_code' => 'sometimes|exists:airports,iata_code',
-        ]);
+        try {
+            $validated = $request->validate([
+                'terminal_code' => 'sometimes|string|max:10',
+                'iata_code' => 'sometimes|exists:airports,iata_code',
+            ]);
 
-        $terminal->update($validated);
+            $terminal->update($validated);
 
-        return redirect()->back()->with('success', 'Terminal updated successfully.');
+            return redirect()->back()->with('success', 'Terminal updated successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle duplicate entry errors
+            if ($e->getCode() === '23000') {
+                return redirect()->back()
+                    ->withErrors(['terminal_code' => 'A terminal with this code already exists for this airport.'])
+                    ->withInput();
+            }
+            return redirect()->back()
+                ->withErrors(['error' => 'An error occurred while updating the terminal.'])
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => 'An error occurred while updating the terminal.'])
+                ->withInput();
+        }
     }
 
     /**

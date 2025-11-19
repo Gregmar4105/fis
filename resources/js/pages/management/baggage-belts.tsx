@@ -162,7 +162,14 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
 
     const openEditDialog = (belt: BaggageBelt) => {
         setSelectedBelt(belt);
-        editForm.setData({ terminal_id: String(belt.terminal.id), belt_code: belt.belt_code, status: belt.status });
+        // Reset form first to clear any previous values
+        editForm.reset();
+        // Then set all the current values from the belt
+        editForm.setData({ 
+            terminal_id: String(belt.terminal?.id || ''), 
+            belt_code: belt.belt_code || '', 
+            status: belt.status || 'Active' 
+        });
         setShowEditDialog(true);
     };
 

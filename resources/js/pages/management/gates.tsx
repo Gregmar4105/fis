@@ -12,7 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { DoorOpen, Plus, Pencil, Trash2, Plane, Search } from 'lucide-react';
+import { DoorOpen, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,19 +27,11 @@ interface Terminal {
     airport: string;
 }
 
-interface CurrentFlight {
-    flight_number: string;
-    airline: string;
-    status: string;
-    scheduled_departure: string;
-}
-
 interface Gate {
     id: number;
     gate_code: string;
     gate_status?: string;
     terminal: Terminal;
-    current_flights: CurrentFlight[];
     authorized_airlines: string[];
     is_occupied: boolean;
 }
@@ -317,7 +309,6 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                         <TableHead className="px-4 py-3">Gate</TableHead>
                                         <TableHead className="px-4 py-3">Terminal</TableHead>
                                         <TableHead className="px-4 py-3">Status</TableHead>
-                                        <TableHead className="px-4 py-3 min-w-[200px]">Current Flights</TableHead>
                                         <TableHead className="px-4 py-3 min-w-[150px]">Authorized Airlines</TableHead>
                                         <TableHead className="text-right px-4 py-3">Actions</TableHead>
                                     </TableRow>
@@ -325,7 +316,7 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                 <TableBody>
                                     {gatesList.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                                                 No gates found. Add your first gate to get started.
                                             </TableCell>
                                         </TableRow>
@@ -352,28 +343,6 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                     </Badge>
                                                     {gate.gate_status && gate.gate_status !== 'Open' && (
                                                         <div className="text-xs text-muted-foreground mt-1">{gate.gate_status}</div>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="px-4 py-3 min-w-[200px]">
-                                                    {gate.current_flights && gate.current_flights.length > 0 ? (
-                                                        <div className="space-y-1.5">
-                                                            {gate.current_flights.map((flight: any, idx: number) => (
-                                                                <div key={`gate-${gate.id}-flight-${idx}`} className="text-sm flex items-start gap-2">
-                                                                    <Plane className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        <span className="font-medium truncate">{flight.flight_number}</span>
-                                                                        {flight.airline && (
-                                                                            <span className="text-xs text-muted-foreground truncate">{flight.airline}</span>
-                                                                        )}
-                                                                        {flight.scheduled_departure && (
-                                                                            <span className="text-xs text-muted-foreground">{flight.scheduled_departure}</span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-sm text-muted-foreground">No active flights</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-4 py-3 min-w-[150px]">
