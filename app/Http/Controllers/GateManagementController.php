@@ -55,18 +55,37 @@ class GateManagementController extends Controller
             }
         }
 
-        $gates = $query->orderBy('gate_code')
+        // Get all gate codes for batch querying
+        $gatesPaginated = $query->orderBy('gate_code')
             ->paginate($perPage)
-            ->withQueryString()
-            ->through(function ($gate) {
-            // Get current flights for this gate (using flights table directly)
-            $currentFlights = \App\Models\Flight::where('fk_id_gate_code', $gate->id_gate_code)
+            ->withQueryString();
+        
+        $gateCodes = $gatesPaginated->pluck('id_gate_code')->filter()->toArray();
+        
+        // Batch query all flights for these gates in one query
+        $allFlights = [];
+        if (!empty($gateCodes)) {
+            $flights = \App\Models\Flight::whereIn('fk_id_gate_code', $gateCodes)
                 ->whereBetween('scheduled_departure_time', [
                     now()->startOfDay(),
                     now()->addDay()->endOfDay()
                 ])
                 ->with(['status', 'airline'])
                 ->get();
+            
+            // Group flights by gate code for quick lookup
+            foreach ($flights as $flight) {
+                $gateCode = $flight->fk_id_gate_code;
+                if (!isset($allFlights[$gateCode])) {
+                    $allFlights[$gateCode] = [];
+                }
+                $allFlights[$gateCode][] = $flight;
+            }
+        }
+        
+        $gates = $gatesPaginated->through(function ($gate) use ($allFlights) {
+            // Get flights for this gate from the pre-loaded array
+            $currentFlights = $allFlights[$gate->id_gate_code] ?? [];
 
             return [
                 'id' => $gate->id,
@@ -78,21 +97,21 @@ class GateManagementController extends Controller
                     'name' => $gate->terminal->name,
                     'airport' => $gate->terminal->airport->iata_code,
                 ],
-                'current_flights' => $currentFlights->map(function ($flight) {
+                'current_flights' => collect($currentFlights)->map(function ($flight) {
                     return [
                         'flight_number' => $flight->flight_number,
                         'airline' => $flight->airline?->airline_name ?? 'N/A',
                         'status' => $flight->status?->status_name ?? 'N/A',
                         'scheduled_departure' => $flight->scheduled_departure_time->format('H:i'),
                     ];
-                }),
+                })->toArray(),
                 'authorized_airlines' => $gate->authorizedAirlines->map(function ($airline) {
                     return [
                         'code' => $airline->airline_code,
                         'name' => $airline->airline_name,
                     ];
                 }),
-                'is_occupied' => $currentFlights->filter(function ($flight) {
+                'is_occupied' => collect($currentFlights)->filter(function ($flight) {
                     return $flight->status && $flight->status->status_code === 'BRD';
                 })->isNotEmpty(),
             ];
@@ -114,26 +133,30 @@ class GateManagementController extends Controller
             ];
         })->values();
         
-        // Calculate stats properly
-        $allGates = Gate::all();
-        $occupiedCount = 0;
-        foreach ($allGates as $gate) {
-            $currentFlights = \App\Models\Flight::where('fk_id_gate_code', $gate->id_gate_code)
+        // Calculate stats efficiently - batch query all gates and flights
+        $allGateCodes = Gate::pluck('id_gate_code')->filter()->toArray();
+        $occupiedGateCodes = [];
+        
+        if (!empty($allGateCodes)) {
+            // Get all boarding flights for all gates in one query
+            $boardingFlights = \App\Models\Flight::whereIn('fk_id_gate_code', $allGateCodes)
                 ->whereBetween('scheduled_departure_time', [
                     now()->startOfDay(),
                     now()->addDay()->endOfDay()
                 ])
                 ->with('status')
-                ->get();
+                ->get()
+                ->filter(function ($flight) {
+                    return $flight->status && $flight->status->status_code === 'BRD';
+                })
+                ->pluck('fk_id_gate_code')
+                ->unique()
+                ->toArray();
             
-            $isOccupied = $currentFlights->filter(function ($flight) {
-                return $flight->status && $flight->status->status_code === 'BRD';
-            })->isNotEmpty();
-            
-            if ($isOccupied) {
-                $occupiedCount++;
-            }
+            $occupiedGateCodes = $boardingFlights;
         }
+        
+        $occupiedCount = count($occupiedGateCodes);
 
         return Inertia::render('management/gates', [
             'gates' => $gates->withQueryString(),

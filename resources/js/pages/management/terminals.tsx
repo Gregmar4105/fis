@@ -87,7 +87,6 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
     const [airportFilter, setAirportFilter] = useState(filters.airport ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? terminals.per_page ?? 10));
     const [filterAirportLetter, setFilterAirportLetter] = useState<string | null>(null);
-    const [terminalLetter, setTerminalLetter] = useState<string | null>(filters.letter ?? null);
     const [createAirportLetter, setCreateAirportLetter] = useState<string | null>(null);
     const [editAirportLetter, setEditAirportLetter] = useState<string | null>(null);
 
@@ -124,14 +123,13 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
     };
 
     const hasActiveFilters = useMemo(() => {
-        return !!(searchTerm || airportFilter || terminalLetter);
-    }, [searchTerm, airportFilter, terminalLetter]);
+        return !!(searchTerm || airportFilter);
+    }, [searchTerm, airportFilter]);
 
     const buildParams = (overrides: Record<string, number | string> = {}) => {
         const params: Record<string, number | string> = { ...overrides };
         if (searchTerm) params.search = searchTerm;
         if (airportFilter) params.airport = airportFilter;
-        if (terminalLetter) params.letter = terminalLetter;
         if (perPage) params.per_page = Number(perPage);
         return params;
     };
@@ -148,7 +146,6 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
     const clearFilters = () => {
         setSearchTerm('');
         setAirportFilter('');
-        setTerminalLetter(null);
         router.get('/management/terminals', {}, { replace: true });
     };
 
@@ -244,17 +241,6 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                                         placeholder="Terminal code"
                                         className="pl-9"
                                     />
-                                </div>
-                                <div className="px-1 py-1 flex gap-1 flex-wrap">
-                                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').map((ch) => (
-                                        <button
-                                            key={`terminal-letter-${ch}`}
-                                            type="button"
-                                            onMouseDown={(e) => e.preventDefault()}
-                                            onClick={() => setTerminalLetter(terminalLetter === ch ? null : ch)}
-                                            className={`text-xs px-1.5 py-0.5 rounded ${terminalLetter === ch ? 'bg-primary text-primary-foreground font-semibold' : 'hover:bg-muted'}`}
-                                        >{ch}</button>
-                                    ))}
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -364,29 +350,15 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                                                     <div className="text-xs text-muted-foreground">{terminal.airport.airport_name}</div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="space-y-2">
-                                                        {terminal.gates_count > 0 && terminal.gates && terminal.gates.length > 0 && (
-                                                            <div>
-                                                                <div className="text-sm font-medium mb-1">{terminal.gates_count} gates</div>
-                                                                <div className="flex flex-wrap gap-1.5">
-                                                                    {terminal.gates.map((gate) => (
-                                                                        <span key={gate.id} className="px-2 py-0.5 bg-background border rounded text-xs">
-                                                                            {gate.gate_code}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
+                                                    <div className="space-y-1">
+                                                        {terminal.gates_count > 0 && (
+                                                            <div className="text-sm">
+                                                                <span className="font-medium">{terminal.gates_count}</span> gate{terminal.gates_count !== 1 ? 's' : ''}
                                                             </div>
                                                         )}
-                                                        {terminal.baggage_belts_count > 0 && terminal.baggage_belts && terminal.baggage_belts.length > 0 && (
-                                                            <div>
-                                                                <div className="text-sm font-medium mb-1 text-black dark:text-gray-300">{terminal.baggage_belts_count} belts</div>
-                                                                <div className="flex flex-wrap gap-1.5">
-                                                                    {terminal.baggage_belts.map((belt) => (
-                                                                        <span key={belt.id} className="px-2 py-0.5 bg-background border rounded text-xs text-black dark:text-gray-300">
-                                                                            {belt.belt_code}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
+                                                        {terminal.baggage_belts_count > 0 && (
+                                                            <div className="text-sm text-black dark:text-gray-300">
+                                                                <span className="font-medium">{terminal.baggage_belts_count}</span> belt{terminal.baggage_belts_count !== 1 ? 's' : ''}
                                                             </div>
                                                         )}
                                                         {(terminal.gates_count === 0 && terminal.baggage_belts_count === 0) && (

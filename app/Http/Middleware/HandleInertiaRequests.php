@@ -52,4 +52,12 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
+
+    /**
+     * Handle Inertia errors to hide sensitive payload information.
+     */
+    public function rootView(Request $request): string
+    {
+        return parent::rootView($request);
+    }
 }

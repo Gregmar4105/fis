@@ -34,17 +34,17 @@ class Terminal extends Model
                 $terminal->id = $maxId + 1;
             }
             
-            // Generate id_terminal_code if not provided
-            if (empty($terminal->id_terminal_code) && $terminal->id && $terminal->terminal_code) {
-                $terminal->id_terminal_code = $terminal->id . '-' . $terminal->terminal_code;
+            // Generate id_terminal_code if not provided - format: {iata_code}-{terminal_code}
+            if (empty($terminal->id_terminal_code) && $terminal->iata_code && $terminal->terminal_code) {
+                $terminal->id_terminal_code = $terminal->iata_code . '-' . $terminal->terminal_code;
             }
         });
 
-        // Update id_terminal_code when terminal_code or id changes
+        // Update id_terminal_code when terminal_code or iata_code changes
         static::updating(function ($terminal) {
-            if ($terminal->isDirty('terminal_code') || $terminal->isDirty('id')) {
-                if ($terminal->id && $terminal->terminal_code) {
-                    $terminal->id_terminal_code = $terminal->id . '-' . $terminal->terminal_code;
+            if ($terminal->isDirty('terminal_code') || $terminal->isDirty('iata_code')) {
+                if ($terminal->iata_code && $terminal->terminal_code) {
+                    $terminal->id_terminal_code = $terminal->iata_code . '-' . $terminal->terminal_code;
                 }
             }
         });

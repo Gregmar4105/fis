@@ -17,18 +17,12 @@ class TerminalManagementController extends Controller
     {
         $perPage = $this->resolvePerPage($request->integer('per_page', 10));
 
-        $query = Terminal::with(['airport', 'gates', 'baggageBelts'])
+        $query = Terminal::with(['airport'])
             ->withCount(['gates', 'baggageBelts']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
             $query->where('terminal_code', 'like', "%{$search}%");
-        }
-        
-        // Filter by alphabet if provided
-        if ($request->filled('letter')) {
-            $letter = $request->string('letter');
-            $query->where('terminal_code', 'like', "{$letter}%");
         }
 
         if ($request->filled('airport')) {
@@ -55,7 +49,6 @@ class TerminalManagementController extends Controller
             'filters' => [
                 'search' => $request->input('search', ''),
                 'airport' => $request->input('airport', ''),
-                'letter' => $request->input('letter', ''),
                 'per_page' => $perPage,
             ],
             'stats' => [
@@ -71,14 +64,30 @@ class TerminalManagementController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'iata_code' => 'required|exists:airports,iata_code',
-            'terminal_code' => 'required|string|max:10',
-        ]);
+        try {
+            $validated = $request->validate([
+                'iata_code' => 'required|exists:airports,iata_code',
+                'terminal_code' => 'required|string|max:10',
+            ]);
 
-        Terminal::create($validated);
+            Terminal::create($validated);
 
-        return redirect()->back()->with('success', 'Terminal created successfully.');
+            return redirect()->back()->with('success', 'Terminal created successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle duplicate entry errors
+            if ($e->getCode() === '23000') {
+                return redirect()->back()
+                    ->withErrors(['terminal_code' => 'A terminal with this code already exists for this airport.'])
+                    ->withInput();
+            }
+            return redirect()->back()
+                ->withErrors(['error' => 'An error occurred while creating the terminal.'])
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => 'An error occurred while creating the terminal.'])
+                ->withInput();
+        }
     }
 
     /**
