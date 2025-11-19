@@ -151,10 +151,17 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
 
     const openEditDialog = (gate: Gate) => {
         setSelectedGate(gate);
-        editForm.setData('gate_code', gate.gate_code);
-        editForm.setData('terminal_id', String(gate.terminal.id));
-        editForm.setData('gate_status', gate.gate_status || 'Open');
-        editForm.setData('airline_codes', gate.authorized_airlines || []);
+        // Reset form first to clear any previous values
+        editForm.reset();
+        // Then set all the current values from the gate
+        editForm.setData({
+            gate_code: gate.gate_code || '',
+            terminal_id: String(gate.terminal?.id || ''),
+            gate_status: gate.gate_status || 'Open',
+            airline_codes: Array.isArray(gate.authorized_airlines) 
+                ? gate.authorized_airlines.map((airline: any) => typeof airline === 'string' ? airline : airline.code || airline)
+                : [],
+        });
         setShowEditDialog(true);
     };
 
@@ -302,17 +309,17 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                         <CardTitle>All Gates</CardTitle>
                         <CardDescription>View and manage all airport gates</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-6">
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Gate</TableHead>
-                                        <TableHead>Terminal</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Current Flights</TableHead>
-                                        <TableHead>Authorized Airlines</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead className="px-4 py-3">Gate</TableHead>
+                                        <TableHead className="px-4 py-3">Terminal</TableHead>
+                                        <TableHead className="px-4 py-3">Status</TableHead>
+                                        <TableHead className="px-4 py-3 min-w-[200px]">Current Flights</TableHead>
+                                        <TableHead className="px-4 py-3 min-w-[150px]">Authorized Airlines</TableHead>
+                                        <TableHead className="text-right px-4 py-3">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -325,35 +332,38 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                     ) : (
                                         gatesList.map((gate) => (
                                             <TableRow key={`gate-${gate.id}`} className="hover:bg-accent/50 dark:hover:bg-accent/30 transition-colors">
-                                                <TableCell className="font-medium">
+                                                <TableCell className="font-medium px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        <DoorOpen className="w-4 h-4 text-muted-foreground" />
-                                                        {gate.gate_code}
+                                                        <DoorOpen className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                        <span className="truncate">{gate.gate_code}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-4 py-3">
                                                     <div>
-                                                        <div className="font-medium">{gate.terminal.name}</div>
-                                                        <div className="text-xs text-muted-foreground">
+                                                        <div className="font-medium truncate">{gate.terminal.name}</div>
+                                                        <div className="text-xs text-muted-foreground truncate">
                                                             {gate.terminal.code} • {gate.terminal.airport}
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-4 py-3">
                                                     <Badge variant={gate.is_occupied ? 'destructive' : 'default'}>
                                                         {gate.is_occupied ? 'Occupied' : 'Available'}
                                                     </Badge>
+                                                    {gate.gate_status && gate.gate_status !== 'Open' && (
+                                                        <div className="text-xs text-muted-foreground mt-1">{gate.gate_status}</div>
+                                                    )}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="px-4 py-3 min-w-[200px]">
                                                     {gate.current_flights && gate.current_flights.length > 0 ? (
-                                                        <div className="space-y-1">
+                                                        <div className="space-y-1.5">
                                                             {gate.current_flights.map((flight: any, idx: number) => (
-                                                                <div key={`gate-${gate.id}-flight-${idx}`} className="text-sm flex items-center gap-2">
-                                                                    <Plane className="w-3 h-3 text-muted-foreground" />
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-medium">{flight.flight_number}</span>
+                                                                <div key={`gate-${gate.id}-flight-${idx}`} className="text-sm flex items-start gap-2">
+                                                                    <Plane className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="font-medium truncate">{flight.flight_number}</span>
                                                                         {flight.airline && (
-                                                                            <span className="text-xs text-muted-foreground">{flight.airline}</span>
+                                                                            <span className="text-xs text-muted-foreground truncate">{flight.airline}</span>
                                                                         )}
                                                                         {flight.scheduled_departure && (
                                                                             <span className="text-xs text-muted-foreground">{flight.scheduled_departure}</span>
@@ -366,14 +376,14 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                         <span className="text-sm text-muted-foreground">No active flights</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell>
-                                                    {gate.authorized_airlines.length > 0 ? (
+                                                <TableCell className="px-4 py-3 min-w-[150px]">
+                                                    {gate.authorized_airlines && gate.authorized_airlines.length > 0 ? (
                                                         <div className="flex flex-wrap gap-1">
-                                                                                {gate.authorized_airlines.slice(0, 2).map((airline, idx) => (
-                                                                                    <Badge key={`gate-${gate.id}-airline-${airline}-${idx}`} variant="outline" className="text-xs">
-                                                                                        {airline}
-                                                                                    </Badge>
-                                                                                ))}
+                                                            {gate.authorized_airlines.slice(0, 2).map((airline: any, idx: number) => (
+                                                                <Badge key={`gate-${gate.id}-airline-${typeof airline === 'string' ? airline : airline.code || airline}-${idx}`} variant="outline" className="text-xs">
+                                                                    {typeof airline === 'string' ? airline : airline.code || airline.name || 'N/A'}
+                                                                </Badge>
+                                                            ))}
                                                             {gate.authorized_airlines.length > 2 && (
                                                                 <Badge variant="outline" className="text-xs">
                                                                     +{gate.authorized_airlines.length - 2}
@@ -384,8 +394,8 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                         <span className="text-sm text-muted-foreground">All airlines</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
+                                                <TableCell className="text-right px-4 py-3">
+                                                    <div className="flex items-center justify-end gap-1">
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon"
