@@ -124,16 +124,25 @@ class TerminalManagementController extends Controller
     /**
      * Remove the specified terminal.
      */
-    public function destroy(Terminal $terminal)
+    public function destroy($terminal)
     {
-        // Check if terminal has gates or baggage claims
-        if ($terminal->gates()->exists() || $terminal->baggageBelts()->exists()) {
-            return redirect()->back()->with('error', 'Cannot delete terminal with assigned gates or baggage claims.');
+        try {
+            // Handle both route model binding and direct ID
+            $terminalModel = $terminal instanceof Terminal ? $terminal : Terminal::findOrFail($terminal);
+            
+            // Check if terminal has gates or baggage claims
+            if ($terminalModel->gates()->exists() || $terminalModel->baggageBelts()->exists()) {
+                return redirect()->back()->with('error', 'Cannot delete terminal with assigned gates or baggage claims.');
+            }
+
+            $terminalModel->delete();
+
+            return redirect()->back()->with('success', 'Terminal deleted successfully.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->back()->with('error', 'Terminal not found.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while deleting the terminal.');
         }
-
-        $terminal->delete();
-
-        return redirect()->back()->with('success', 'Terminal deleted successfully.');
     }
 
     protected function resolvePerPage(int $perPage): int

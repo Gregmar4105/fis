@@ -118,6 +118,11 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                     setShowDeleteDialog(false);
                     setSelectedTerminal(null);
                 },
+                onError: (errors) => {
+                    console.error('Delete error:', errors);
+                },
+                preserveState: false,
+                preserveScroll: false,
             });
         }
     };
