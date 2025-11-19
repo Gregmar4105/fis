@@ -219,6 +219,34 @@ class FlightStatusUpdateController extends Controller
     }
 
     /**
+     * Quick update baggage belt status.
+     */
+    public function updateBeltStatus(Request $request, Flight $flight)
+    {
+        $validated = $request->validate([
+            'belt_status' => 'required|in:Active,Maintenance,Closed,Scheduled',
+        ]);
+
+        if (!$flight->baggageBelt) {
+            return redirect()->back()->with('error', 'Flight does not have an assigned baggage belt.');
+        }
+
+        $oldStatus = $flight->baggageBelt->status;
+        $flight->baggageBelt->update(['status' => $validated['belt_status']]);
+
+        // Log the belt status change event
+        FlightEvent::create([
+            'flight_id' => $flight->id,
+            'event_type' => 'CLAIM_CHANGE',
+            'old_value' => $oldStatus ?? 'N/A',
+            'new_value' => $validated['belt_status'],
+            'description' => 'Baggage belt status updated',
+        ]);
+
+        return redirect()->back()->with('success', 'Baggage belt status updated successfully.');
+    }
+
+    /**
      * Bulk update for multiple flights.
      */
     public function bulkUpdate(Request $request)

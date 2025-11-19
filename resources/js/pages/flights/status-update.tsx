@@ -204,6 +204,14 @@ export default function StatusUpdate({ flights, filters, options }: Props) {
         });
     };
 
+    const handleBeltStatusUpdate = (flightId: number, beltStatus: string) => {
+        router.post(`/flights/status-update/${flightId}/belt-status`, {
+            belt_status: beltStatus,
+        }, {
+            preserveScroll: true,
+        });
+    };
+
     const getStatusColor = (statusCode: string) => {
         // Extract just the code part (e.g., 'SCH' from '1-SCH' or 'SCH')
         const code = statusCode.includes('-') ? statusCode.split('-')[1] : statusCode;
@@ -526,9 +534,24 @@ export default function StatusUpdate({ flights, filters, options }: Props) {
                                                     </Select>
                                                 </TableCell>
                                                 <TableCell className="text-center w-24">
-                                                    <span className={`text-sm font-medium ${getBeltStatusColor(flight.baggage_belt?.status)}`}>
-                                                        {flight.baggage_belt?.status || 'N/A'}
-                                                    </span>
+                                                    {flight.baggage_belt ? (
+                                                        <Select
+                                                            value={flight.baggage_belt.status || 'Active'}
+                                                            onValueChange={(value) => handleBeltStatusUpdate(flight.id, value)}
+                                                        >
+                                                            <SelectTrigger className="w-full">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Active">Active</SelectItem>
+                                                                <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                                <SelectItem value="Closed">Closed</SelectItem>
+                                                                <SelectItem value="Scheduled">Scheduled</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-muted-foreground">N/A</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="w-28">
                                                     <div className="flex flex-col items-center text-center">
