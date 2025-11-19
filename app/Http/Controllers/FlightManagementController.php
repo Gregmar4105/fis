@@ -247,7 +247,7 @@ class FlightManagementController extends Controller
         try {
             $flight->events()->create([
                 'event_type' => 'TIME_UPDATE',
-                'description' => 'Flight created',
+                'description' => 'Flight created in FIS',
                 'timestamp' => now(),
             ]);
         } catch (\Exception $e) {
