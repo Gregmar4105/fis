@@ -87,7 +87,9 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
     const [airportFilter, setAirportFilter] = useState(filters.airport ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? terminals.per_page ?? 10));
     const [filterAirportLetter, setFilterAirportLetter] = useState<string | null>(null);
+    const [createAirportSearch, setCreateAirportSearch] = useState('');
     const [createAirportLetter, setCreateAirportLetter] = useState<string | null>(null);
+    const [editAirportSearch, setEditAirportSearch] = useState('');
     const [editAirportLetter, setEditAirportLetter] = useState<string | null>(null);
 
     const createForm = useForm({
@@ -156,6 +158,8 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
 
     const openCreateDialog = () => {
         createForm.reset();
+        setCreateAirportSearch('');
+        setCreateAirportLetter(null);
         setShowCreateDialog(true);
     };
 
@@ -168,6 +172,8 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
             iata_code: terminal.airport?.iata_code ?? '',
             terminal_code: terminal.terminal_code ?? '',
         });
+        setEditAirportSearch('');
+        setEditAirportLetter(null);
         setShowEditDialog(true);
     };
 
@@ -450,7 +456,7 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                                 Cancel
                             </Button>
                             <Button variant="destructive" onClick={confirmDelete}>
-                                Delete Terminal
+                                Delete
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -484,19 +490,38 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                                         <SelectValue placeholder="Select airport" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-72 overflow-auto">
-                                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
-                                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
-                                                <button
-                                                    key={`create-airport-letter-${ch}`}
-                                                    type="button"
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    onClick={() => setCreateAirportLetter(createAirportLetter === ch ? null : ch)}
-                                                    className={`text-xs px-1 ${createAirportLetter === ch ? 'underline font-semibold' : ''}`}
-                                                >{ch}</button>
-                                            ))}
+                                        <div className="p-2 border-b space-y-2">
+                                            <div className="relative">
+                                                <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search airport or IATA code"
+                                                    value={createAirportSearch}
+                                                    onChange={(e) => setCreateAirportSearch(e.target.value)}
+                                                    className="pl-8 h-8 text-sm"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="px-1 flex gap-1 flex-wrap">
+                                                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                    <button
+                                                        key={`create-airport-letter-${ch}`}
+                                                        type="button"
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={() => setCreateAirportLetter(createAirportLetter === ch ? null : ch)}
+                                                        className={`text-xs px-1 ${createAirportLetter === ch ? 'underline font-semibold' : ''}`}
+                                                    >{ch}</button>
+                                                ))}
+                                            </div>
                                         </div>
                                         <SelectItem value="none">Select airport</SelectItem>
-                                        {airports.filter((airport) => !createAirportLetter || (airport.iata_code || '').startsWith(createAirportLetter)).map((airport) => {
+                                        {airports.filter((airport) => {
+                                            const matchesSearch = !createAirportSearch || 
+                                                (airport.iata_code || '').toLowerCase().includes(createAirportSearch.toLowerCase()) ||
+                                                (airport.airport_name || '').toLowerCase().includes(createAirportSearch.toLowerCase());
+                                            const matchesLetter = !createAirportLetter || (airport.iata_code || '').startsWith(createAirportLetter);
+                                            return matchesSearch && matchesLetter;
+                                        }).map((airport) => {
                                             const hasNoTerminal = airportsWithoutTerminals.some(a => a.iata_code === airport.iata_code);
                                             return (
                                                 <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
@@ -561,19 +586,38 @@ export default function TerminalManagement({ terminals, airports, airportsWithou
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-72 overflow-auto">
-                                        <div className="px-2 py-1 flex gap-1 flex-wrap border-b">
-                                            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
-                                                <button
-                                                    key={`edit-airport-letter-${ch}`}
-                                                    type="button"
-                                                    onMouseDown={(e) => e.preventDefault()}
-                                                    onClick={() => setEditAirportLetter(editAirportLetter === ch ? null : ch)}
-                                                    className={`text-xs px-1 ${editAirportLetter === ch ? 'underline font-semibold' : ''}`}
-                                                >{ch}</button>
-                                            ))}
+                                        <div className="p-2 border-b space-y-2">
+                                            <div className="relative">
+                                                <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search airport or IATA code"
+                                                    value={editAirportSearch}
+                                                    onChange={(e) => setEditAirportSearch(e.target.value)}
+                                                    className="pl-8 h-8 text-sm"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="px-1 flex gap-1 flex-wrap">
+                                                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                    <button
+                                                        key={`edit-airport-letter-${ch}`}
+                                                        type="button"
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={() => setEditAirportLetter(editAirportLetter === ch ? null : ch)}
+                                                        className={`text-xs px-1 ${editAirportLetter === ch ? 'underline font-semibold' : ''}`}
+                                                    >{ch}</button>
+                                                ))}
+                                            </div>
                                         </div>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {airports.filter((airport) => !editAirportLetter || (airport.iata_code || '').startsWith(editAirportLetter)).map((airport) => (
+                                        {airports.filter((airport) => {
+                                            const matchesSearch = !editAirportSearch || 
+                                                (airport.iata_code || '').toLowerCase().includes(editAirportSearch.toLowerCase()) ||
+                                                (airport.airport_name || '').toLowerCase().includes(editAirportSearch.toLowerCase());
+                                            const matchesLetter = !editAirportLetter || (airport.iata_code || '').startsWith(editAirportLetter);
+                                            return matchesSearch && matchesLetter;
+                                        }).map((airport) => (
                                             <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
                                                 {airport.iata_code} - {airport.airport_name}
                                             </SelectItem>
