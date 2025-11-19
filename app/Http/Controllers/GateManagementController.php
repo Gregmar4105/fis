@@ -35,6 +35,7 @@ class GateManagementController extends Controller
         if ($request->filled('status')) {
             $status = $request->string('status');
             if ($status === 'occupied') {
+                // Occupied = gates with boarding flights OR gate_status = 'Closed'
                 $occupiedGateIds = \App\Models\Flight::whereBetween('scheduled_departure_time', [
                     now()->startOfDay(),
                     now()->addDay()->endOfDay(),
@@ -42,8 +43,12 @@ class GateManagementController extends Controller
                 ->whereNotNull('fk_id_gate_code')
                 ->pluck('fk_id_gate_code')
                 ->toArray();
-                $query->whereIn('id_gate_code', $occupiedGateIds);
+                // Also include gates with status 'Closed'
+                $closedGateIds = Gate::where('gate_status', 'Closed')->pluck('id_gate_code')->toArray();
+                $allOccupiedIds = array_unique(array_merge($occupiedGateIds, $closedGateIds));
+                $query->whereIn('id_gate_code', $allOccupiedIds);
             } else {
+                // Available = gates without boarding flights AND gate_status = 'Open'
                 $occupiedGateIds = \App\Models\Flight::whereBetween('scheduled_departure_time', [
                     now()->startOfDay(),
                     now()->addDay()->endOfDay(),
@@ -51,7 +56,12 @@ class GateManagementController extends Controller
                 ->whereNotNull('fk_id_gate_code')
                 ->pluck('fk_id_gate_code')
                 ->toArray();
-                $query->whereNotIn('id_gate_code', $occupiedGateIds);
+                // Exclude gates with boarding flights AND only show gates with status 'Open'
+                $query->whereNotIn('id_gate_code', $occupiedGateIds)
+                      ->where(function($q) {
+                          $q->where('gate_status', 'Open')
+                            ->orWhereNull('gate_status');
+                      });
             }
         }
 
@@ -111,7 +121,7 @@ class GateManagementController extends Controller
                         'name' => $airline->airline_name,
                     ];
                 }),
-                'is_occupied' => collect($currentFlights)->filter(function ($flight) {
+                'is_occupied' => ($gate->gate_status === 'Closed') || collect($currentFlights)->filter(function ($flight) {
                     return $flight->status && $flight->status->status_code === 'BRD';
                 })->isNotEmpty(),
             ];

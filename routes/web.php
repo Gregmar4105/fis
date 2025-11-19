@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified', 'prevent-back'])->group(function () {
         Route::get('/', [FlightStatusUpdateController::class, 'index'])->name('index');
         Route::post('/{flight}/status', [FlightStatusUpdateController::class, 'updateStatus'])->name('update');
         Route::post('/{flight}/gate', [FlightStatusUpdateController::class, 'updateGate'])->name('gate');
+        Route::post('/{flight}/gate-status', [FlightStatusUpdateController::class, 'updateGateStatus'])->name('gate-status');
         Route::post('/{flight}/baggage-claim', [FlightStatusUpdateController::class, 'updateBaggageClaim'])->name('baggage');
         Route::post('/bulk', [FlightStatusUpdateController::class, 'bulkUpdate'])->name('bulk');
     });

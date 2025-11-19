@@ -196,6 +196,14 @@ export default function StatusUpdate({ flights, filters, options }: Props) {
         });
     };
 
+    const handleGateStatusUpdate = (flightId: number, gateStatus: string) => {
+        router.post(`/flights/status-update/${flightId}/gate-status`, {
+            gate_status: gateStatus,
+        }, {
+            preserveScroll: true,
+        });
+    };
+
     const getStatusColor = (statusCode: string) => {
         // Extract just the code part (e.g., 'SCH' from '1-SCH' or 'SCH')
         const code = statusCode.includes('-') ? statusCode.split('-')[1] : statusCode;
@@ -211,14 +219,26 @@ export default function StatusUpdate({ flights, filters, options }: Props) {
         }
     };
 
-    // Get gate status color
+    // Get gate status color - Open = Available (green), Closed = Occupied (red)
     const getGateStatusColor = (status: string | undefined): string => {
         if (!status) return 'text-muted-foreground';
         switch (status.toUpperCase()) {
+            case 'OPEN': return 'text-green-600 dark:text-green-400';
+            case 'CLOSED': return 'text-red-600 dark:text-red-400';
             case 'AVAILABLE': return 'text-green-600 dark:text-green-400';
             case 'OCCUPIED': return 'text-red-600 dark:text-red-400';
             case 'MAINTENANCE': return 'text-orange-600 dark:text-orange-400';
             default: return 'text-muted-foreground';
+        }
+    };
+
+    // Convert gate status for display - Open = Available, Closed = Occupied
+    const getGateStatusDisplay = (status: string | undefined): string => {
+        if (!status) return 'N/A';
+        switch (status.toUpperCase()) {
+            case 'OPEN': return 'Available';
+            case 'CLOSED': return 'Occupied';
+            default: return status;
         }
     };
 
@@ -463,16 +483,29 @@ export default function StatusUpdate({ flights, filters, options }: Props) {
                                                             <SelectItem value="none">No Gate</SelectItem>
                                                             {options.gates.map((gate) => (
                                                                 <SelectItem key={`gate-${gate.id}-${gate.gate_code ?? ''}`} value={String(gate.id)}>
-                                                                    {gate.gate_code} {gate.terminal?.terminal_code ? `(${gate.terminal.terminal_code})` : ''}
+                                                                    {gate.gate_code}
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
                                                 </TableCell>
                                                 <TableCell className="text-center w-24">
-                                                    <span className={`text-sm font-medium ${getGateStatusColor(flight.gate?.status)}`}>
-                                                        {flight.gate?.status || 'N/A'}
-                                                    </span>
+                                                    {flight.gate ? (
+                                                        <Select
+                                                            value={flight.gate.status || 'Open'}
+                                                            onValueChange={(value) => handleGateStatusUpdate(flight.id, value)}
+                                                        >
+                                                            <SelectTrigger className="w-full">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Open">Open</SelectItem>
+                                                                <SelectItem value="Closed">Closed</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-muted-foreground">N/A</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center w-24">
                                                     <Select
@@ -486,7 +519,7 @@ export default function StatusUpdate({ flights, filters, options }: Props) {
                                                             <SelectItem value="none">No Belt</SelectItem>
                                                             {options.baggageBelts.map((belt) => (
                                                                 <SelectItem key={`belt-${belt.id}-${belt.belt_code ?? ''}`} value={String(belt.id)}>
-                                                                    {belt.belt_code} {belt.terminal?.terminal_code ? `(${belt.terminal.terminal_code})` : ''}
+                                                                    {belt.belt_code}
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>

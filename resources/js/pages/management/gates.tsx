@@ -307,7 +307,7 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                             <div className="flex gap-2 items-end">
                                 <Button onClick={() => applyFilters()}>Apply</Button>
                                 <Button variant="outline" onClick={() => resetFilters()}>Clear</Button>
-                            </div>
+                        </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -357,8 +357,10 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                     <Badge variant={gate.is_occupied ? 'destructive' : 'default'}>
                                                         {gate.is_occupied ? 'Occupied' : 'Available'}
                                                     </Badge>
-                                                    {gate.gate_status && gate.gate_status !== 'Open' && (
-                                                        <div className="text-xs text-muted-foreground mt-1">{gate.gate_status}</div>
+                                                    {gate.gate_status && (
+                                                        <div className="text-xs text-muted-foreground mt-1">
+                                                            {gate.gate_status === 'Open' ? 'Available' : gate.gate_status === 'Closed' ? 'Occupied' : gate.gate_status}
+                                                        </div>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-4 py-3 min-w-[150px]">
@@ -367,8 +369,8 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                             {gate.authorized_airlines.slice(0, 2).map((airline: any, idx: number) => (
                                                                 <Badge key={`gate-${gate.id}-airline-${typeof airline === 'string' ? airline : airline.code || airline}-${idx}`} variant="outline" className="text-xs">
                                                                     {typeof airline === 'string' ? airline : airline.code || airline.name || 'N/A'}
-                                                                </Badge>
-                                                            ))}
+                                                                                    </Badge>
+                                                                                ))}
                                                             {gate.authorized_airlines.length > 2 && (
                                                                 <Badge variant="outline" className="text-xs">
                                                                     +{gate.authorized_airlines.length - 2}
@@ -380,7 +382,7 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right px-4 py-3">
-                                                    <div className="flex items-center justify-end gap-1">
+                                                <div className="flex items-center justify-end gap-1">
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon"

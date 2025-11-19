@@ -166,6 +166,34 @@ class FlightStatusUpdateController extends Controller
     }
 
     /**
+     * Quick update gate status.
+     */
+    public function updateGateStatus(Request $request, Flight $flight)
+    {
+        $validated = $request->validate([
+            'gate_status' => 'required|in:Open,Closed',
+        ]);
+
+        if (!$flight->gate) {
+            return redirect()->back()->with('error', 'Flight does not have an assigned gate.');
+        }
+
+        $oldStatus = $flight->gate->gate_status;
+        $flight->gate->update(['gate_status' => $validated['gate_status']]);
+
+        // Log the gate status change event
+        FlightEvent::create([
+            'flight_id' => $flight->id,
+            'event_type' => 'GATE_CHANGE',
+            'old_value' => $oldStatus ?? 'N/A',
+            'new_value' => $validated['gate_status'],
+            'description' => 'Gate status updated',
+        ]);
+
+        return redirect()->back()->with('success', 'Gate status updated successfully.');
+    }
+
+    /**
      * Quick update baggage belt assignment.
      */
     public function updateBaggageClaim(Request $request, Flight $flight)
