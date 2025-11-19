@@ -84,9 +84,33 @@ class BaggageBeltManagementController extends Controller
             ];
         })->values();
 
+        // Group terminals by airport for better organization
+        $terminalsByAirport = $terminals->groupBy('iata_code')->map(function ($terminals) {
+            return [
+                'iata_code' => $terminals->first()->airport->iata_code,
+                'airport_name' => $terminals->first()->airport->airport_name,
+                'terminals' => $terminals->map(function ($terminal) {
+                    return [
+                        'id' => $terminal->id,
+                        'code' => $terminal->terminal_code,
+                        'name' => $terminal->terminal_code,
+                        'airport' => $terminal->airport->iata_code,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
         return Inertia::render('management/baggage-belts', [
             'baggageBelts' => $baggageBelts->withQueryString(),
-            'terminals' => $terminals,
+            'terminals' => $terminals->map(function ($terminal) {
+                return [
+                    'id' => $terminal->id,
+                    'code' => $terminal->terminal_code,
+                    'name' => $terminal->terminal_code,
+                    'airport' => $terminal->airport->iata_code,
+                ];
+            }),
+            'terminalsByAirport' => $terminalsByAirport,
             'terminalsWithoutBelts' => $terminalsWithoutBelts,
             'statuses' => $statusOptions,
             'filters' => [
@@ -138,22 +162,31 @@ class BaggageBeltManagementController extends Controller
     /**
      * Remove the specified baggage belt.
      */
-    public function destroy(BaggageBelt $baggageBelt)
+    public function destroy($baggageBelt)
     {
-        // Check if baggage belt has active flights
-        $statusCodes = \App\Models\FlightStatus::whereIn('status_code', ['SCH', 'BRD', 'ARR'])
-            ->pluck('id_status_code')
-            ->toArray();
-        
-        if (\App\Models\Flight::where('fk_id_belt_code', $baggageBelt->id_belt_code)
-            ->whereIn('fk_id_status_code', $statusCodes)
-            ->exists()) {
-            return redirect()->back()->with('error', 'Cannot delete baggage belt with active flights.');
+        try {
+            // Handle both route model binding and direct ID
+            $beltModel = $baggageBelt instanceof BaggageBelt ? $baggageBelt : BaggageBelt::findOrFail($baggageBelt);
+            
+            // Check if baggage belt has active flights
+            $statusCodes = \App\Models\FlightStatus::whereIn('status_code', ['SCH', 'BRD', 'ARR'])
+                ->pluck('id_status_code')
+                ->toArray();
+            
+            if (\App\Models\Flight::where('fk_id_belt_code', $beltModel->id_belt_code)
+                ->whereIn('fk_id_status_code', $statusCodes)
+                ->exists()) {
+                return redirect()->back()->with('error', 'Cannot delete baggage belt with active flights.');
+            }
+
+            $beltModel->delete();
+
+            return redirect()->back()->with('success', 'Baggage belt deleted successfully.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->back()->with('error', 'Baggage belt not found.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while deleting the baggage belt.');
         }
-
-        $baggageBelt->delete();
-
-        return redirect()->back()->with('success', 'Baggage belt deleted successfully.');
     }
 
     protected function resolvePerPage(int $perPage): int

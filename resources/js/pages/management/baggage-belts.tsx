@@ -67,14 +67,22 @@ interface StatsSummary {
     maintenance: number;
 }
 
+interface AirportWithTerminals {
+    iata_code: string;
+    airport_name: string;
+    terminals: Terminal[];
+}
+
 interface Props {
     baggageBelts: PaginatedBaggageBelts;
     terminals?: Terminal[];
+    terminalsByAirport?: AirportWithTerminals[];
+    terminalsWithoutBelts?: Terminal[];
     filters?: FiltersState;
     stats?: StatsSummary;
 }
 
-export default function BaggageBeltManagement({ baggageBelts, terminals = [], filters = {}, stats = { total: baggageBelts.total || 0, active: 0, maintenance: 0 } }: Props) {
+export default function BaggageBeltManagement({ baggageBelts, terminals = [], terminalsByAirport = [], terminalsWithoutBelts = [], filters = {}, stats = { total: baggageBelts.total || 0, active: 0, maintenance: 0 } }: Props) {
     const [selectedBelt, setSelectedBelt] = useState<BaggageBelt | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -86,6 +94,10 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
     const [terminalFilter, setTerminalFilter] = useState(filters.terminal ?? '');
     const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? baggageBelts.per_page ?? 10));
+    const [createTerminalSearch, setCreateTerminalSearch] = useState('');
+    const [createTerminalLetter, setCreateTerminalLetter] = useState<string | null>(null);
+    const [editTerminalSearch, setEditTerminalSearch] = useState('');
+    const [editTerminalLetter, setEditTerminalLetter] = useState<string | null>(null);
 
     const createForm = useForm({
         terminal_id: '',
@@ -117,6 +129,11 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                     setShowDeleteDialog(false);
                     setSelectedBelt(null);
                 },
+                onError: (errors) => {
+                    console.error('Delete error:', errors);
+                },
+                preserveState: false,
+                preserveScroll: false,
             });
         }
     };
@@ -158,7 +175,12 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
         router.get('/management/baggage-belts', {}, { replace: true });
     };
 
-    const openCreateDialog = () => { createForm.reset(); setShowCreateDialog(true); };
+    const openCreateDialog = () => { 
+        createForm.reset(); 
+        setCreateTerminalSearch('');
+        setCreateTerminalLetter(null);
+        setShowCreateDialog(true); 
+    };
 
     const openEditDialog = (belt: BaggageBelt) => {
         setSelectedBelt(belt);
@@ -170,6 +192,8 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
             belt_code: belt.belt_code || '', 
             status: belt.status || 'Active' 
         });
+        setEditTerminalSearch('');
+        setEditTerminalLetter(null);
         setShowEditDialog(true);
     };
 
@@ -196,7 +220,12 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                     </div>
                     <Button 
                         className="gap-2"
-                        onClick={() => alert('Baggage belt creation form coming soon')}
+                        onClick={() => {
+                            createForm.reset();
+                            setCreateTerminalSearch('');
+                            setCreateTerminalLetter(null);
+                            setShowCreateDialog(true);
+                        }}
                     >
                         <Plus className="w-4 h-4" />
                         Add Baggage Belt
@@ -210,7 +239,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                         <CardTitle>Baggage Belts ({beltsList.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-4 mb-4">
+                        <div className="grid gap-4 md:grid-cols-5">
                             <div className="space-y-2">
                                 <Label htmlFor="belt-search">Search</Label>
                                 <div className="relative">
@@ -263,13 +292,10 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-                        <div className="flex gap-2 mb-4">
-                            <Button onClick={() => applyFilters()}>Apply</Button>
-                            <Button variant="outline" onClick={() => resetFilters()}>Reset</Button>
-                            <Button className="ml-auto" onClick={() => setShowCreateDialog(true)}>
-                                <Plus className="w-4 h-4" /> Add Baggage Belt
-                            </Button>
+                            <div className="flex gap-2 items-end">
+                                <Button onClick={() => applyFilters()}>Apply</Button>
+                                <Button variant="outline" onClick={() => resetFilters()}>Clear</Button>
+                            </div>
                         </div>
 
                     </CardContent>
@@ -412,7 +438,14 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                     </DialogContent>
                 </Dialog>
                 {/* Create Dialog */}
-                <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <Dialog open={showCreateDialog} onOpenChange={(open) => {
+                    setShowCreateDialog(open);
+                    if (!open) {
+                        createForm.reset();
+                        setCreateTerminalSearch('');
+                        setCreateTerminalLetter(null);
+                    }
+                }}>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Create Baggage Belt</DialogTitle>
@@ -423,11 +456,80 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                 <Label htmlFor="create-terminal">Terminal *</Label>
                                 <Select value={createForm.data.terminal_id || 'none'} onValueChange={(v) => createForm.setData('terminal_id', v === 'none' ? '' : v)}>
                                     <SelectTrigger id="create-terminal"><SelectValue placeholder="Select terminal" /></SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-auto">
+                                        <div className="p-2 border-b space-y-2">
+                                            <div className="relative">
+                                                <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search airport or terminal"
+                                                    value={createTerminalSearch}
+                                                    onChange={(e) => setCreateTerminalSearch(e.target.value)}
+                                                    className="pl-8 h-8 text-sm"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="px-1 flex gap-1 flex-wrap">
+                                                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                    <button
+                                                        key={`create-terminal-letter-${ch}`}
+                                                        type="button"
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={() => setCreateTerminalLetter(createTerminalLetter === ch ? null : ch)}
+                                                        className={`text-xs px-1 ${createTerminalLetter === ch ? 'underline font-semibold' : ''}`}
+                                                    >{ch}</button>
+                                                ))}
+                                            </div>
+                                        </div>
                                         <SelectItem value="none">Select terminal</SelectItem>
-                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminalsByAirport.length > 0 ? terminalsByAirport.filter((airport) => {
+                                            const matchesSearch = !createTerminalSearch || 
+                                                (airport.iata_code || '').toLowerCase().includes(createTerminalSearch.toLowerCase()) ||
+                                                (airport.airport_name || '').toLowerCase().includes(createTerminalSearch.toLowerCase()) ||
+                                                airport.terminals.some(t => 
+                                                    (t.code || '').toLowerCase().includes(createTerminalSearch.toLowerCase())
+                                                );
+                                            const matchesLetter = !createTerminalLetter || 
+                                                (airport.iata_code || '').startsWith(createTerminalLetter) ||
+                                                (airport.airport_name || '').toLowerCase().startsWith(createTerminalLetter.toLowerCase());
+                                            return matchesSearch && matchesLetter;
+                                        }).map((airport) => (
+                                            <div key={`airport-${airport.iata_code}`}>
+                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">
+                                                    {airport.iata_code} - {airport.airport_name}
+                                                </div>
+                                                {airport.terminals.map(t => {
+                                                    const hasNoBelt = terminalsWithoutBelts.some(nt => nt.id === t.id);
+                                                    return (
+                                                        <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>
+                                                            {t.code}
+                                                            {hasNoBelt && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </div>
+                                        )) : terminals.filter((t) => {
+                                            const matchesSearch = !createTerminalSearch || 
+                                                (t.code || '').toLowerCase().includes(createTerminalSearch.toLowerCase()) ||
+                                                (t.airport || '').toLowerCase().includes(createTerminalSearch.toLowerCase());
+                                            const matchesLetter = !createTerminalLetter || 
+                                                (t.code || '').startsWith(createTerminalLetter) ||
+                                                (t.airport || '').startsWith(createTerminalLetter);
+                                            return matchesSearch && matchesLetter;
+                                        }).map(t => {
+                                            const hasNoBelt = terminalsWithoutBelts.some(nt => nt.id === t.id);
+                                            return (
+                                                <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>
+                                                    {t.code} • {t.airport}
+                                                    {hasNoBelt && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
+                                {createForm.errors.terminal_id && (
+                                    <p className="text-sm text-destructive">{createForm.errors.terminal_id}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="create-belt-code">Belt Code *</Label>
@@ -453,7 +555,14 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                 </Dialog>
 
                 {/* Edit Dialog */}
-                <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                <Dialog open={showEditDialog} onOpenChange={(open) => {
+                    setShowEditDialog(open);
+                    if (!open) {
+                        editForm.reset();
+                        setEditTerminalSearch('');
+                        setEditTerminalLetter(null);
+                    }
+                }}>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Edit Baggage Belt</DialogTitle>
@@ -463,11 +572,72 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], fi
                                 <Label htmlFor="edit-terminal">Terminal</Label>
                                 <Select value={editForm.data.terminal_id || 'none'} onValueChange={(v) => editForm.setData('terminal_id', v === 'none' ? '' : v)}>
                                     <SelectTrigger id="edit-terminal"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-auto">
+                                        <div className="p-2 border-b space-y-2">
+                                            <div className="relative">
+                                                <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search airport or terminal"
+                                                    value={editTerminalSearch}
+                                                    onChange={(e) => setEditTerminalSearch(e.target.value)}
+                                                    className="pl-8 h-8 text-sm"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="px-1 flex gap-1 flex-wrap">
+                                                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                    <button
+                                                        key={`edit-terminal-letter-${ch}`}
+                                                        type="button"
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={() => setEditTerminalLetter(editTerminalLetter === ch ? null : ch)}
+                                                        className={`text-xs px-1 ${editTerminalLetter === ch ? 'underline font-semibold' : ''}`}
+                                                    >{ch}</button>
+                                                ))}
+                                            </div>
+                                        </div>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminalsByAirport.length > 0 ? terminalsByAirport.filter((airport) => {
+                                            const matchesSearch = !editTerminalSearch || 
+                                                (airport.iata_code || '').toLowerCase().includes(editTerminalSearch.toLowerCase()) ||
+                                                (airport.airport_name || '').toLowerCase().includes(editTerminalSearch.toLowerCase()) ||
+                                                airport.terminals.some(t => 
+                                                    (t.code || '').toLowerCase().includes(editTerminalSearch.toLowerCase())
+                                                );
+                                            const matchesLetter = !editTerminalLetter || 
+                                                (airport.iata_code || '').startsWith(editTerminalLetter) ||
+                                                (airport.airport_name || '').toLowerCase().startsWith(editTerminalLetter.toLowerCase());
+                                            return matchesSearch && matchesLetter;
+                                        }).map((airport) => (
+                                            <div key={`airport-${airport.iata_code}`}>
+                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">
+                                                    {airport.iata_code} - {airport.airport_name}
+                                                </div>
+                                                {airport.terminals.map(t => (
+                                                    <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>
+                                                        {t.code}
+                                                    </SelectItem>
+                                                ))}
+                                            </div>
+                                        )) : terminals.filter((t) => {
+                                            const matchesSearch = !editTerminalSearch || 
+                                                (t.code || '').toLowerCase().includes(editTerminalSearch.toLowerCase()) ||
+                                                (t.airport || '').toLowerCase().includes(editTerminalSearch.toLowerCase());
+                                            const matchesLetter = !editTerminalLetter || 
+                                                (t.code || '').startsWith(editTerminalLetter) ||
+                                                (t.airport || '').startsWith(editTerminalLetter);
+                                            return matchesSearch && matchesLetter;
+                                        }).map(t => (
+                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>
+                                                {t.code} • {t.airport}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
+                                {editForm.errors.terminal_id && (
+                                    <p className="text-sm text-destructive">{editForm.errors.terminal_id}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-belt-code">Belt Code</Label>

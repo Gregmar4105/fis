@@ -242,22 +242,31 @@ class GateManagementController extends Controller
     /**
      * Remove the specified gate.
      */
-    public function destroy(Gate $gate)
+    public function destroy($gate)
     {
-        // Check if gate has active flights
-        $statusCodes = \App\Models\FlightStatus::whereIn('status_code', ['SCH', 'BRD', 'DLY'])
-            ->pluck('id_status_code')
-            ->toArray();
-        
-        if (\App\Models\Flight::where('fk_id_gate_code', $gate->id_gate_code)
-            ->whereIn('fk_id_status_code', $statusCodes)
-            ->exists()) {
-            return redirect()->back()->with('error', 'Cannot delete gate with active flights.');
+        try {
+            // Handle both route model binding and direct ID
+            $gateModel = $gate instanceof Gate ? $gate : Gate::findOrFail($gate);
+            
+            // Check if gate has active flights
+            $statusCodes = \App\Models\FlightStatus::whereIn('status_code', ['SCH', 'BRD', 'DLY'])
+                ->pluck('id_status_code')
+                ->toArray();
+            
+            if (\App\Models\Flight::where('fk_id_gate_code', $gateModel->id_gate_code)
+                ->whereIn('fk_id_status_code', $statusCodes)
+                ->exists()) {
+                return redirect()->back()->with('error', 'Cannot delete gate with active flights.');
+            }
+
+            $gateModel->delete();
+
+            return redirect()->back()->with('success', 'Gate deleted successfully.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return redirect()->back()->with('error', 'Gate not found.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while deleting the gate.');
         }
-
-        $gate->delete();
-
-        return redirect()->back()->with('success', 'Gate deleted successfully.');
     }
 
     /**

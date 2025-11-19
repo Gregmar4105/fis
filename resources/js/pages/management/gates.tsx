@@ -118,6 +118,11 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                     setShowDeleteDialog(false);
                     setSelectedGate(null);
                 },
+                onError: (errors) => {
+                    console.error('Delete error:', errors);
+                },
+                preserveState: false,
+                preserveScroll: false,
             });
         }
     };
@@ -232,7 +237,7 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                         <CardTitle>Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-4">
+                        <div className="grid gap-4 md:grid-cols-5">
                             <div className="space-y-2">
                                 <Label htmlFor="gate-search">Search</Label>
                                 <div className="relative">
@@ -299,10 +304,10 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-                        <div className="flex gap-2 mt-4">
-                            <Button onClick={() => applyFilters()}>Apply</Button>
-                            <Button variant="outline" onClick={() => resetFilters()}>Reset</Button>
+                            <div className="flex gap-2 items-end">
+                                <Button onClick={() => applyFilters()}>Apply</Button>
+                                <Button variant="outline" onClick={() => resetFilters()}>Clear</Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
