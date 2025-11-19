@@ -243,11 +243,11 @@ class FlightManagementController extends Controller
         // Create initial event log (skip if event_type enum doesn't support 'created')
         // Note: The database uses an ENUM for event_type, so we'll log creation info in TIME_UPDATE instead
 
-        // Record flight creation event
+        // Record flight creation event (minimal event for tracking)
         try {
             $flight->events()->create([
                 'event_type' => 'TIME_UPDATE',
-                'description' => 'Flight created in FIS',
+                'description' => 'Flight created',
                 'timestamp' => now(),
             ]);
         } catch (\Exception $e) {
