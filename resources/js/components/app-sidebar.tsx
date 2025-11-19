@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder } from 'lucide-react';
+import { BookOpen, Folder, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AppLogo from './app-logo';
 
@@ -45,6 +45,7 @@ export function AppSidebar() {
                                     "flex items-center gap-2",
                                     isCollapsed ? "justify-start" : "justify-center"
                                 )}>
+                                    <Plane className="w-5 h-5 text-primary" />
                                     <span className="font-semibold text-xl">FIS</span>
                                 </div>
                             </Link>

@@ -100,16 +100,63 @@ class GateManagementController extends Controller
 
         $terminals = Terminal::with('airport')->orderBy('terminal_code')->get();
         $airlines = Airline::orderBy('airline_name')->get(['airline_code', 'airline_name']);
+        
+        // Get terminals that don't have gates yet
+        $terminalsWithGates = Gate::distinct('terminal_id')->pluck('terminal_id')->toArray();
+        $terminalsWithoutGates = $terminals->filter(function ($terminal) use ($terminalsWithGates) {
+            return !in_array($terminal->id, $terminalsWithGates);
+        })->map(function ($terminal) {
+            return [
+                'id' => $terminal->id,
+                'code' => $terminal->terminal_code,
+                'name' => $terminal->terminal_code,
+                'airport' => $terminal->airport->iata_code,
+            ];
+        })->values();
+        
+        // Calculate stats properly
+        $allGates = Gate::all();
+        $occupiedCount = 0;
+        foreach ($allGates as $gate) {
+            $currentFlights = \App\Models\Flight::where('fk_id_gate_code', $gate->id_gate_code)
+                ->whereBetween('scheduled_departure_time', [
+                    now()->startOfDay(),
+                    now()->addDay()->endOfDay()
+                ])
+                ->with('status')
+                ->get();
+            
+            $isOccupied = $currentFlights->filter(function ($flight) {
+                return $flight->status && $flight->status->status_code === 'BRD';
+            })->isNotEmpty();
+            
+            if ($isOccupied) {
+                $occupiedCount++;
+            }
+        }
 
         return Inertia::render('management/gates', [
             'gates' => $gates->withQueryString(),
-            'terminals' => $terminals,
+            'terminals' => $terminals->map(function ($terminal) {
+                return [
+                    'id' => $terminal->id,
+                    'code' => $terminal->terminal_code,
+                    'name' => $terminal->terminal_code,
+                    'airport' => $terminal->airport->iata_code,
+                ];
+            }),
+            'terminalsWithoutGates' => $terminalsWithoutGates,
             'airlines' => $airlines,
             'filters' => [
                 'search' => $request->input('search', ''),
                 'terminal' => $request->input('terminal', ''),
                 'status' => $request->input('status', ''),
                 'per_page' => $perPage,
+            ],
+            'stats' => [
+                'total' => Gate::count(),
+                'occupied' => $occupiedCount,
+                'available' => Gate::count() - $occupiedCount,
             ],
         ]);
     }

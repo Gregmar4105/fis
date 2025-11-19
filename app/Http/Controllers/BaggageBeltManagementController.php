@@ -70,10 +70,24 @@ class BaggageBeltManagementController extends Controller
 
         $terminals = Terminal::with('airport')->orderBy('terminal_code')->get();
         $statusOptions = ['Active', 'Maintenance', 'Closed', 'Scheduled'];
+        
+        // Get terminals that don't have baggage belts yet
+        $terminalsWithBelts = BaggageBelt::distinct('terminal_id')->pluck('terminal_id')->toArray();
+        $terminalsWithoutBelts = $terminals->filter(function ($terminal) use ($terminalsWithBelts) {
+            return !in_array($terminal->id, $terminalsWithBelts);
+        })->map(function ($terminal) {
+            return [
+                'id' => $terminal->id,
+                'code' => $terminal->terminal_code,
+                'name' => $terminal->terminal_code,
+                'airport' => $terminal->airport->iata_code,
+            ];
+        })->values();
 
         return Inertia::render('management/baggage-belts', [
             'baggageBelts' => $baggageBelts->withQueryString(),
             'terminals' => $terminals,
+            'terminalsWithoutBelts' => $terminalsWithoutBelts,
             'statuses' => $statusOptions,
             'filters' => [
                 'search' => $request->input('search', ''),

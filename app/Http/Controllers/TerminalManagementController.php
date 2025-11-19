@@ -41,10 +41,17 @@ class TerminalManagementController extends Controller
             ->withQueryString();
 
         $airports = Airport::orderBy('airport_name')->get(['iata_code', 'airport_name']);
+        
+        // Get airports that don't have terminals yet
+        $airportsWithTerminals = Terminal::distinct('iata_code')->pluck('iata_code')->toArray();
+        $airportsWithoutTerminals = $airports->filter(function ($airport) use ($airportsWithTerminals) {
+            return !in_array($airport->iata_code, $airportsWithTerminals);
+        })->values();
 
         return Inertia::render('management/terminals', [
             'terminals' => $terminals,
             'airports' => $airports,
+            'airportsWithoutTerminals' => $airportsWithoutTerminals,
             'filters' => [
                 'search' => $request->input('search', ''),
                 'airport' => $request->input('airport', ''),

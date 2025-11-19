@@ -70,11 +70,12 @@ interface FiltersState {
 interface Props {
     terminals: PaginatedTerminals;
     airports: AirportOption[];
+    airportsWithoutTerminals?: AirportOption[];
     filters: FiltersState;
     stats: StatsSummary;
 }
 
-export default function TerminalManagement({ terminals, airports, filters, stats }: Props) {
+export default function TerminalManagement({ terminals, airports, airportsWithoutTerminals = [], filters, stats }: Props) {
     const [selectedTerminal, setSelectedTerminal] = useState<TerminalRecord | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -284,11 +285,15 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                             ))}
                                         </div>
                                         <SelectItem value="all">All</SelectItem>
-                                        {airports.filter((airport) => !filterAirportLetter || (airport.iata_code || '').startsWith(filterAirportLetter)).map((airport) => (
-                                            <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
-                                                {airport.iata_code} - {airport.airport_name}
-                                            </SelectItem>
-                                        ))}
+                                        {airports.filter((airport) => !filterAirportLetter || (airport.iata_code || '').startsWith(filterAirportLetter)).map((airport) => {
+                                            const hasNoTerminal = airportsWithoutTerminals.some(a => a.iata_code === airport.iata_code);
+                                            return (
+                                                <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
+                                                    {airport.iata_code} - {airport.airport_name}
+                                                    {hasNoTerminal && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -545,11 +550,15 @@ export default function TerminalManagement({ terminals, airports, filters, stats
                                             ))}
                                         </div>
                                         <SelectItem value="none">Select airport</SelectItem>
-                                        {airports.filter((airport) => !createAirportLetter || (airport.iata_code || '').startsWith(createAirportLetter)).map((airport) => (
-                                            <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
-                                                {airport.iata_code} - {airport.airport_name}
-                                            </SelectItem>
-                                        ))}
+                                        {airports.filter((airport) => !createAirportLetter || (airport.iata_code || '').startsWith(createAirportLetter)).map((airport) => {
+                                            const hasNoTerminal = airportsWithoutTerminals.some(a => a.iata_code === airport.iata_code);
+                                            return (
+                                                <SelectItem key={`airport-${airport.iata_code}`} value={airport.iata_code}>
+                                                    {airport.iata_code} - {airport.airport_name}
+                                                    {hasNoTerminal && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                                 {createForm.errors.iata_code && (

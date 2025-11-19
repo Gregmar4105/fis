@@ -70,12 +70,13 @@ interface StatsSummary {
 interface Props {
     gates: PaginatedGates;
     terminals?: Terminal[];
+    terminalsWithoutGates?: Terminal[];
     filters?: FiltersState;
     stats?: StatsSummary;
     airlines?: { airline_code: string; airline_name: string }[];
 }
 
-export default function GateManagement({ gates, terminals = [], filters = {}, stats = { total: gates.total || 0, occupied: 0, available: 0 }, airlines = [] }: Props) {
+export default function GateManagement({ gates, terminals = [], terminalsWithoutGates = [], filters = {}, stats = { total: gates.total || 0, occupied: 0, available: 0 }, airlines = [] }: Props) {
     const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -243,14 +244,21 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="gate-terminal">Terminal</Label>
-                                <Select value={terminalFilter || 'all'} onValueChange={(v) => setTerminalFilter(v === 'all' ? '' : v)}>
+                                <Select value={terminalFilter || 'all'} onValueChange={(v) => {
+                                    if (v === 'all') {
+                                        setTerminalFilter('');
+                                        applyFilters();
+                                    } else {
+                                        setTerminalFilter(v);
+                                    }
+                                }}>
                                     <SelectTrigger id="gate-terminal">
                                         <SelectValue placeholder="All terminals" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All</SelectItem>
                                         {terminals.map((t) => (
-                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
+                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -337,14 +345,22 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {gate.current_flights.length > 0 ? (
+                                                    {gate.current_flights && gate.current_flights.length > 0 ? (
                                                         <div className="space-y-1">
-                                                                                    {gate.current_flights.map((flight, idx) => (
-                                                                                    <div key={`gate-${gate.id}-flight-${idx}`} className="text-sm flex items-center gap-2">
+                                                            {gate.current_flights.map((flight: any, idx: number) => (
+                                                                <div key={`gate-${gate.id}-flight-${idx}`} className="text-sm flex items-center gap-2">
                                                                     <Plane className="w-3 h-3 text-muted-foreground" />
-                                                                    <span className="font-medium">{flight.flight_number}</span>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium">{flight.flight_number}</span>
+                                                                        {flight.airline && (
+                                                                            <span className="text-xs text-muted-foreground">{flight.airline}</span>
+                                                                        )}
+                                                                        {flight.scheduled_departure && (
+                                                                            <span className="text-xs text-muted-foreground">{flight.scheduled_departure}</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                                                ))}
+                                                            ))}
                                                         </div>
                                                     ) : (
                                                         <span className="text-sm text-muted-foreground">No active flights</span>
@@ -452,8 +468,18 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                                     <SelectContent>
                                                         <SelectItem value="none">Select terminal</SelectItem>
                                                         {terminals.map(t => (
-                                                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
-                                                                        ))}
+                                                            <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>
+                                                        ))}
+                                                        {terminalsWithoutGates.length > 0 && (
+                                                            <>
+                                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">Suggested (no gates yet)</div>
+                                                                {terminalsWithoutGates.map(t => (
+                                                                    <SelectItem key={`terminal-suggested-${t.id}`} value={String(t.id)}>
+                                                                        {t.code} • {t.airport} <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </>
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                                 {createForm.errors.terminal_id && <div className="text-destructive text-sm mt-1">{createForm.errors.terminal_id}</div>}
@@ -512,8 +538,18 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                                         <SelectContent>
                                                             <SelectItem value="none">Select terminal</SelectItem>
                                                             {terminals.map(t => (
-                                                                <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>
+                                                                <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>
                                                             ))}
+                                                            {terminalsWithoutGates.length > 0 && (
+                                                                <>
+                                                                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">Suggested (no gates yet)</div>
+                                                                    {terminalsWithoutGates.map(t => (
+                                                                        <SelectItem key={`terminal-suggested-${t.id}`} value={String(t.id)}>
+                                                                            {t.code} • {t.airport} <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </>
+                                                            )}
                                                         </SelectContent>
                                                     </Select>
                                                     {editForm.errors.terminal_id && <div className="text-destructive text-sm mt-1">{editForm.errors.terminal_id}</div>}
@@ -596,7 +632,17 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                     <SelectTrigger id="create-terminal"><SelectValue placeholder="Select terminal" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">Select terminal</SelectItem>
-                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>)}
+                                        {terminalsWithoutGates.length > 0 && (
+                                            <>
+                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">Suggested (no gates yet)</div>
+                                                {terminalsWithoutGates.map(t => (
+                                                    <SelectItem key={`terminal-suggested-${t.id}`} value={String(t.id)}>
+                                                        {t.code} • {t.airport} <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>
+                                                    </SelectItem>
+                                                ))}
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -625,7 +671,7 @@ export default function GateManagement({ gates, terminals = [], filters = {}, st
                                     <SelectTrigger id="edit-terminal"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">No change</SelectItem>
-                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.name} • {t.code}</SelectItem>)}
+                                        {terminals.map(t => <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
