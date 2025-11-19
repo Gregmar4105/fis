@@ -80,12 +80,16 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
     const [terminalFilter, setTerminalFilter] = useState(filters.terminal ?? '');
     const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
     const [perPage, setPerPage] = useState(String(filters.per_page ?? gates.per_page ?? 10));
+    const [createTerminalSearch, setCreateTerminalSearch] = useState('');
+    const [createTerminalLetter, setCreateTerminalLetter] = useState<string | null>(null);
+    const [editTerminalSearch, setEditTerminalSearch] = useState('');
+    const [editTerminalLetter, setEditTerminalLetter] = useState<string | null>(null);
 
     const createForm = useForm({
         terminal_id: '',
         gate_code: '',
+        gate_status: 'Open',
         airline_codes: [] as string[],
-        is_occupied: false,
     });
 
     const editForm = useForm({
@@ -154,6 +158,8 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                 ? gate.authorized_airlines.map((airline: any) => typeof airline === 'string' ? airline : airline.code || airline)
                 : [],
         });
+        setEditTerminalSearch('');
+        setEditTerminalLetter(null);
         setShowEditDialog(true);
     };
 
@@ -176,7 +182,12 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                     </div>
                     <Button 
                         className="gap-2"
-                        onClick={() => setShowCreateDialog(true)}
+                        onClick={() => {
+                            createForm.reset();
+                            setCreateTerminalSearch('');
+                            setCreateTerminalLetter(null);
+                            setShowCreateDialog(true);
+                        }}
                     >
                         <Plus className="w-4 h-4" />
                         Add New Gate
@@ -420,7 +431,14 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                             )}
                         
                             {/* Create Gate Dialog */}
-                            <Dialog open={showCreateDialog} onOpenChange={(open) => { setShowCreateDialog(open); if (!open) createForm.reset(); }}>
+                            <Dialog open={showCreateDialog} onOpenChange={(open) => { 
+                                setShowCreateDialog(open); 
+                                if (!open) {
+                                    createForm.reset();
+                                    setCreateTerminalSearch('');
+                                    setCreateTerminalLetter(null);
+                                }
+                            }}>
                                 <DialogContent>
                                     <DialogHeader>
                                         <DialogTitle>Create New Gate</DialogTitle>
@@ -444,15 +462,51 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                 <Label htmlFor="terminal_id">Terminal</Label>
                                                 <Select value={createForm.data.terminal_id || 'none'} onValueChange={(v) => createForm.setData('terminal_id', v === 'none' ? '' : v)} required>
                                                     <SelectTrigger id="terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
-                                                    <SelectContent>
+                                                    <SelectContent className="max-h-72 overflow-auto">
+                                                        <div className="p-2 border-b space-y-2">
+                                                            <div className="relative">
+                                                                <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                                <Input
+                                                                    placeholder="Search terminal or airport"
+                                                                    value={createTerminalSearch}
+                                                                    onChange={(e) => setCreateTerminalSearch(e.target.value)}
+                                                                    className="pl-8 h-8 text-sm"
+                                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                />
+                                                            </div>
+                                                            <div className="px-1 flex gap-1 flex-wrap">
+                                                                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                                    <button
+                                                                        key={`create-terminal-letter-${ch}`}
+                                                                        type="button"
+                                                                        onMouseDown={(e) => e.preventDefault()}
+                                                                        onClick={() => setCreateTerminalLetter(createTerminalLetter === ch ? null : ch)}
+                                                                        className={`text-xs px-1 ${createTerminalLetter === ch ? 'underline font-semibold' : ''}`}
+                                                                    >{ch}</button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
                                                         <SelectItem value="none">Select terminal</SelectItem>
-                                                        {terminals.map(t => (
+                                                        {terminals.filter((t) => {
+                                                            const matchesSearch = !createTerminalSearch || 
+                                                                (t.code || '').toLowerCase().includes(createTerminalSearch.toLowerCase()) ||
+                                                                (t.airport || '').toLowerCase().includes(createTerminalSearch.toLowerCase());
+                                                            const matchesLetter = !createTerminalLetter || (t.code || '').startsWith(createTerminalLetter) || (t.airport || '').startsWith(createTerminalLetter);
+                                                            return matchesSearch && matchesLetter;
+                                                        }).map(t => (
                                                             <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>
                                                         ))}
                                                         {terminalsWithoutGates.length > 0 && (
                                                             <>
                                                                 <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">Suggested (no gates yet)</div>
-                                                                {terminalsWithoutGates.map(t => (
+                                                                {terminalsWithoutGates.filter((t) => {
+                                                                    const matchesSearch = !createTerminalSearch || 
+                                                                        (t.code || '').toLowerCase().includes(createTerminalSearch.toLowerCase()) ||
+                                                                        (t.airport || '').toLowerCase().includes(createTerminalSearch.toLowerCase());
+                                                                    const matchesLetter = !createTerminalLetter || (t.code || '').startsWith(createTerminalLetter) || (t.airport || '').startsWith(createTerminalLetter);
+                                                                    return matchesSearch && matchesLetter;
+                                                                }).map(t => (
                                                                     <SelectItem key={`terminal-suggested-${t.id}`} value={String(t.id)}>
                                                                         {t.code} • {t.airport} <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>
                                                                     </SelectItem>
@@ -484,13 +538,22 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                         </div>
                                         <DialogFooter>
                                             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-                                            <Button type="submit">Create Gate</Button>
+                                            <Button type="submit" disabled={createForm.processing}>
+                                                {createForm.processing ? 'Creating...' : 'Create'}
+                                            </Button>
                                         </DialogFooter>
                                     </form>
                                 </DialogContent>
                             </Dialog>
                                 {/* Edit Gate Dialog */}
-                                <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) editForm.reset(); }}>
+                                <Dialog open={showEditDialog} onOpenChange={(open) => { 
+                                    setShowEditDialog(open); 
+                                    if (!open) {
+                                        editForm.reset();
+                                        setEditTerminalSearch('');
+                                        setEditTerminalLetter(null);
+                                    }
+                                }}>
                                     <DialogContent>
                                         <DialogHeader>
                                             <DialogTitle>Edit Gate</DialogTitle>
@@ -514,15 +577,51 @@ export default function GateManagement({ gates, terminals = [], terminalsWithout
                                                     <Label htmlFor="edit_terminal_id">Terminal</Label>
                                                     <Select value={editForm.data.terminal_id || 'none'} onValueChange={(v) => editForm.setData('terminal_id', v === 'none' ? '' : v)} required>
                                                         <SelectTrigger id="edit_terminal_id"><SelectValue placeholder="Select terminal" /></SelectTrigger>
-                                                        <SelectContent>
+                                                        <SelectContent className="max-h-72 overflow-auto">
+                                                            <div className="p-2 border-b space-y-2">
+                                                                <div className="relative">
+                                                                    <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                                    <Input
+                                                                        placeholder="Search terminal or airport"
+                                                                        value={editTerminalSearch}
+                                                                        onChange={(e) => setEditTerminalSearch(e.target.value)}
+                                                                        className="pl-8 h-8 text-sm"
+                                                                        onKeyDown={(e) => e.stopPropagation()}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    />
+                                                                </div>
+                                                                <div className="px-1 flex gap-1 flex-wrap">
+                                                                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => (
+                                                                        <button
+                                                                            key={`edit-terminal-letter-${ch}`}
+                                                                            type="button"
+                                                                            onMouseDown={(e) => e.preventDefault()}
+                                                                            onClick={() => setEditTerminalLetter(editTerminalLetter === ch ? null : ch)}
+                                                                            className={`text-xs px-1 ${editTerminalLetter === ch ? 'underline font-semibold' : ''}`}
+                                                                        >{ch}</button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
                                                             <SelectItem value="none">Select terminal</SelectItem>
-                                                            {terminals.map(t => (
+                                                            {terminals.filter((t) => {
+                                                                const matchesSearch = !editTerminalSearch || 
+                                                                    (t.code || '').toLowerCase().includes(editTerminalSearch.toLowerCase()) ||
+                                                                    (t.airport || '').toLowerCase().includes(editTerminalSearch.toLowerCase());
+                                                                const matchesLetter = !editTerminalLetter || (t.code || '').startsWith(editTerminalLetter) || (t.airport || '').startsWith(editTerminalLetter);
+                                                                return matchesSearch && matchesLetter;
+                                                            }).map(t => (
                                                                 <SelectItem key={`terminal-${t.id}`} value={String(t.id)}>{t.code} • {t.airport}</SelectItem>
                                                             ))}
                                                             {terminalsWithoutGates.length > 0 && (
                                                                 <>
                                                                     <div className="px-2 py-1 text-xs font-semibold text-muted-foreground border-t">Suggested (no gates yet)</div>
-                                                                    {terminalsWithoutGates.map(t => (
+                                                                    {terminalsWithoutGates.filter((t) => {
+                                                                        const matchesSearch = !editTerminalSearch || 
+                                                                            (t.code || '').toLowerCase().includes(editTerminalSearch.toLowerCase()) ||
+                                                                            (t.airport || '').toLowerCase().includes(editTerminalSearch.toLowerCase());
+                                                                        const matchesLetter = !editTerminalLetter || (t.code || '').startsWith(editTerminalLetter) || (t.airport || '').startsWith(editTerminalLetter);
+                                                                        return matchesSearch && matchesLetter;
+                                                                    }).map(t => (
                                                                         <SelectItem key={`terminal-suggested-${t.id}`} value={String(t.id)}>
                                                                             {t.code} • {t.airport} <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">(suggested)</span>
                                                                         </SelectItem>
