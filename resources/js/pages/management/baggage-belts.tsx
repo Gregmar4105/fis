@@ -12,7 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Luggage, Plus, Pencil, Trash2, Plane, Search } from 'lucide-react';
+import { Luggage, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { Head, router, useForm } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
 import { useMemo, useState } from 'react';
@@ -141,7 +141,7 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], te
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Active':
-                return 'bg-green-500/20 text-green-400 border-green-500/30 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
+                return 'bg-green-600/20 text-green-600 border-green-600/30 dark:bg-green-600/20 dark:text-green-500 dark:border-green-600/30';
             case 'Maintenance':
                 return 'bg-orange-500/20 text-orange-400 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30';
             case 'Closed':
@@ -309,14 +309,13 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], te
                                     <TableHead>Belt Code</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Terminal</TableHead>
-                                    <TableHead>Current Flights</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {beltsList.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                             No baggage belts found. Add one to get started.
                                         </TableCell>
                                     </TableRow>
@@ -341,28 +340,6 @@ export default function BaggageBeltManagement({ baggageBelts, terminals = [], te
                                                         {belt.terminal.name}
                                                     </div>
                                                 </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {belt.current_flights.length === 0 ? (
-                                                    <span className="text-muted-foreground text-sm">No active flights</span>
-                                                ) : (
-                                                    <div className="flex flex-col gap-1">
-                                                        {belt.current_flights.slice(0, 2).map((flight, idx) => (
-                                                                            <div key={`belt-${belt.id}-flight-${idx}`} className="flex items-center gap-2 text-sm">
-                                                                <Plane className="w-3 h-3 text-muted-foreground" />
-                                                                <span className="font-medium">{flight.flight_number}</span>
-                                                                <span className="text-muted-foreground">
-                                                                    from {flight.origin}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                        {belt.current_flights.length > 2 && (
-                                                            <span className="text-xs text-muted-foreground">
-                                                                +{belt.current_flights.length - 2} more
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
